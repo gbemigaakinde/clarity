@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Details - Clarity Academy</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container nav-container">
+            <a href="index.html" class="logo">Clarity Academy</a>
+            <ul class="nav-links">
+                <li><a href="courses.html">Courses</a></li>
+                <li><a href="dashboard.html" id="dashboardLink" style="display: none;">Dashboard</a></li>
+                <li><a href="admin/index.html" id="adminLink" style="display: none;">Admin</a></li>
+                <li><a href="login.html" id="loginLink">Login</a></li>
+                <li><a href="#" id="logoutLink" style="display: none;">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div id="courseContent" class="loading-container">
+        <div class="loading">Loading course details...</div>
+    </div>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>Clarity Academy</h4>
+                    <p>Professional online learning platform for ambitious learners</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Learn</h4>
+                    <ul>
+                        <li><a href="courses.html">All Courses</a></li>
+                        <li><a href="dashboard.html">Dashboard</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Company</h4>
+                    <ul>
+                        <li><a href="#">About</a></li>
+                        <li><a href="#">Contact</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Clarity Academy. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script type="module" src="js/firebase-config.js"></script>
+    <script type="module" src="js/auth.js"></script>
+    <script type="module" src="js/course-detail.js"></script>
+</body>
+</html>
