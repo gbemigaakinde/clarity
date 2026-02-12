@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clarity Academy - Professional Online Learning</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container nav-container">
+            <a href="index.html" class="logo">Clarity Academy</a>
+            <ul class="nav-links">
+                <li><a href="courses.html">Courses</a></li>
+                <li><a href="dashboard.html" id="dashboardLink" style="display: none;">Dashboard</a></li>
+                <li><a href="admin/index.html" id="adminLink" style="display: none;">Admin</a></li>
+                <li><a href="login.html" id="loginLink">Login</a></li>
+                <li><a href="#" id="logoutLink" style="display: none;">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h1>Learn Without Limits</h1>
+                <p>Master new skills with expert-led courses designed for professionals</p>
+                <div class="hero-buttons">
+                    <a href="courses.html" class="btn btn-primary">Explore Courses</a>
+                    <a href="register.html" class="btn btn-secondary">Get Started</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="features">
+        <div class="container">
+            <div class="features-grid">
+                <div class="feature-card">
+                    <i class="fas fa-book"></i>
+                    <h3>Expert-Led Courses</h3>
+                    <p>Learn from industry professionals with real-world experience</p>
+                </div>
+                <div class="feature-card">
+                    <i class="fas fa-clock"></i>
+                    <h3>Learn At Your Pace</h3>
+                    <p>Access courses anytime, anywhere on any device</p>
+                </div>
+                <div class="feature-card">
+                    <i class="fas fa-certificate"></i>
+                    <h3>Track Progress</h3>
+                    <p>Monitor your learning journey with detailed analytics</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="featured-courses">
+        <div class="container">
+            <h2>Featured Courses</h2>
+            <div id="featuredCoursesGrid" class="courses-grid">
+                <div class="loading">Loading courses...</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="testimonials">
+        <div class="container">
+            <h2>What Our Students Say</h2>
+            <div class="testimonials-grid">
+                <div class="testimonial-card">
+                    <p>"Clarity Academy transformed my career. The courses are practical and taught by experts who truly understand the industry."</p>
+                    <div class="testimonial-author">
+                        <strong>Sarah Chen</strong>
+                        <span>Software Engineer</span>
+                    </div>
+                </div>
+                <div class="testimonial-card">
+                    <p>"The platform is intuitive and the content is top-notch. I've learned more here than in years of traditional education."</p>
+                    <div class="testimonial-author">
+                        <strong>Michael Rodriguez</strong>
+                        <span>Product Manager</span>
+                    </div>
+                </div>
+                <div class="testimonial-card">
+                    <p>"Best investment in my professional development. The instructors are knowledgeable and the lessons are well-structured."</p>
+                    <div class="testimonial-author">
+                        <strong>Emily Watson</strong>
+                        <span>Data Analyst</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>Clarity Academy</h4>
+                    <p>Professional online learning platform for ambitious learners</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Learn</h4>
+                    <ul>
+                        <li><a href="courses.html">All Courses</a></li>
+                        <li><a href="dashboard.html">Dashboard</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Company</h4>
+                    <ul>
+                        <li><a href="#">About</a></li>
+                        <li><a href="#">Contact</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Clarity Academy. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script type="module" src="js/firebase-config.js"></script>
+    <script type="module" src="js/auth.js"></script>
+    <script type="module" src="js/home.js"></script>
+</body>
+</html>
