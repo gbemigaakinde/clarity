@@ -17,28 +17,30 @@ async function loadFeaturedCourses() {
             const course = doc.data();
             const courseId = doc.id;
             
-            // Calculate from modules
-            const moduleCount = course.modules ? course.modules.length : 0;
-            const lessonCount = course.modules 
-                ? course.modules.reduce((sum, mod) => sum + (mod.lessons?.length || 0), 0)
+            // Calculate modules and lessons
+            const moduleCount = course.modules?.length || 0;
+            const lessonCount = course.modules
+                ? course.modules.reduce((total, mod) => total + (mod.lessons?.length || 0), 0)
                 : 0;
             
             const card = document.createElement('div');
             card.className = 'course-card';
-            card.onclick = () => window.location.href = `course-detail.html?id=${courseId}`;
+            card.addEventListener('click', () => {
+                window.location.href = `course-detail.html?id=${courseId}`;
+            });
             
             card.innerHTML = `
                 <img src="${course.thumbnail || 'https://via.placeholder.com/400x200'}" alt="${course.title}">
                 <div class="course-card-content">
-                    <span class="course-category">${course.category}</span>
+                    <span class="course-category">${course.category || 'General'}</span>
                     <h3>${course.title}</h3>
-                    <p>${course.description.substring(0, 100)}...</p>
+                    <p>${course.description ? course.description.substring(0, 100) + '...' : ''}</p>
                     <div class="course-meta">
                         <span class="course-instructor">
                             <i class="fas fa-user"></i>
-                            ${course.instructor}
+                            ${course.instructor || 'Unknown'}
                         </span>
-                        <span class="course-price">$${course.price}</span>
+                        <span class="course-price">$${course.price || '0'}</span>
                     </div>
                     <div style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-secondary);">
                         <i class="fas fa-layer-group"></i> ${moduleCount} modules • 
