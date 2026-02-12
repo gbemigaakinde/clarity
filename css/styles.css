@@ -928,6 +928,103 @@ body {
     margin-top: 1.5rem;
 }
 
+/* Lesson Text Content Styling */
+.lesson-text-content {
+    margin: 2rem 0;
+    padding: 2rem;
+    background: var(--card-bg);
+    border-radius: 0.5rem;
+    line-height: 1.8;
+}
+
+.lesson-text-content h2,
+.lesson-text-content h3,
+.lesson-text-content h4 {
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+}
+
+.lesson-text-content h2 {
+    font-size: 1.75rem;
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 0.5rem;
+}
+
+.lesson-text-content h3 {
+    font-size: 1.5rem;
+}
+
+.lesson-text-content h4 {
+    font-size: 1.25rem;
+}
+
+.lesson-text-content p {
+    margin-bottom: 1rem;
+}
+
+.lesson-text-content ul,
+.lesson-text-content ol {
+    margin: 1rem 0 1rem 2rem;
+}
+
+.lesson-text-content li {
+    margin-bottom: 0.5rem;
+}
+
+.lesson-text-content code {
+    background: var(--bg-secondary);
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+}
+
+.lesson-text-content pre {
+    background: var(--bg-secondary);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    margin: 1rem 0;
+}
+
+.lesson-text-content pre code {
+    background: none;
+    padding: 0;
+}
+
+.lesson-text-content blockquote {
+    border-left: 4px solid var(--primary-color);
+    padding-left: 1rem;
+    margin: 1rem 0;
+    font-style: italic;
+    color: var(--text-secondary);
+}
+
+.lesson-text-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.5rem;
+    margin: 1rem 0;
+}
+
+.lesson-text-content a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.lesson-text-content a:hover {
+    text-decoration: underline;
+}
+
+.lesson-text-content strong {
+    font-weight: 600;
+}
+
+.lesson-text-content em {
+    font-style: italic;
+}
+
 /* Lessons Manager */
 .lessons-manager {
     padding: 1rem 0;
