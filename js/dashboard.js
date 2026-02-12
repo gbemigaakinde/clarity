@@ -34,7 +34,6 @@ async function loadEnrolledCourses() {
     const grid = document.getElementById('enrolledCourses');
     
     try {
-        // Get user's enrollments
         const enrollmentsRef = collection(db, 'enrollments');
         const q = query(enrollmentsRef, where('userId', '==', auth.currentUser.uid));
         const enrollmentsSnapshot = await getDocs(q);
@@ -51,7 +50,6 @@ async function loadEnrolledCourses() {
             return;
         }
 
-        // Get course IDs
         const courseIds = [];
         const enrollmentMap = {};
         enrollmentsSnapshot.forEach((doc) => {
@@ -60,7 +58,6 @@ async function loadEnrolledCourses() {
             enrollmentMap[enrollment.courseId] = enrollment;
         });
 
-        // Fetch courses
         grid.innerHTML = '';
         for (const courseId of courseIds) {
             const courseDoc = await getDoc(doc(db, 'courses', courseId));
@@ -68,7 +65,6 @@ async function loadEnrolledCourses() {
                 const course = courseDoc.data();
                 const enrollment = enrollmentMap[courseId];
                 
-                // Get progress
                 const progressRef = collection(db, 'progress');
                 const progressQuery = query(
                     progressRef,
@@ -78,16 +74,25 @@ async function loadEnrolledCourses() {
                 const progressSnapshot = await getDocs(progressQuery);
                 
                 let progress = 0;
-                let lastLessonIndex = 0;
+                let lastModuleId = null;
+                let lastLessonId = null;
+                
                 if (!progressSnapshot.empty) {
                     const progressData = progressSnapshot.docs[0].data();
-                    const completedCount = progressData.completedLessons?.length || 0;
-                    const totalLessons = course.lessons?.length || 1;
-                    progress = Math.round((completedCount / totalLessons) * 100);
-                    lastLessonIndex = progressData.lastAccessedLesson || 0;
+                    
+                    // Calculate progress based on completed lessons
+                    const totalLessons = course.modules?.reduce((sum, mod) => 
+                        sum + (mod.lessons?.length || 0), 0) || 1;
+                    
+                    const completedLessonsCount = Object.values(progressData.completedLessons || {})
+                        .reduce((sum, arr) => sum + arr.length, 0);
+                    
+                    progress = Math.round((completedLessonsCount / totalLessons) * 100);
+                    lastModuleId = progressData.currentModule;
+                    lastLessonId = progressData.currentLesson;
                 }
 
-                const courseCard = createEnrolledCourseCard(courseId, course, progress, lastLessonIndex);
+                const courseCard = createEnrolledCourseCard(courseId, course, progress, lastModuleId, lastLessonId);
                 grid.appendChild(courseCard);
             }
         }
@@ -97,9 +102,11 @@ async function loadEnrolledCourses() {
     }
 }
 
-function createEnrolledCourseCard(id, course, progress, lastLessonIndex) {
+function createEnrolledCourseCard(id, course, progress, lastModuleId, lastLessonId) {
     const card = document.createElement('div');
     card.className = 'course-card';
+
+    const moduleCount = course.modules ? course.modules.length : 0;
 
     card.innerHTML = `
         <img src="${course.thumbnail || 'https://via.placeholder.com/400x200'}" alt="${course.title}">
@@ -116,7 +123,10 @@ function createEnrolledCourseCard(id, course, progress, lastLessonIndex) {
                     <div class="progress-fill" style="width: ${progress}%;"></div>
                 </div>
             </div>
-            <a href="lesson.html?courseId=${id}&lessonIndex=${lastLessonIndex}" class="btn btn-primary btn-full" style="margin-top: 1rem;">
+            <div style="margin-top: 0.75rem; font-size: 0.875rem; color: var(--text-secondary);">
+                <i class="fas fa-layer-group"></i> ${moduleCount} modules
+            </div>
+            <a href="lesson.html?courseId=${id}" class="btn btn-primary btn-full" style="margin-top: 1rem;">
                 ${progress > 0 ? 'Continue Learning' : 'Start Course'}
             </a>
         </div>
