@@ -161,45 +161,58 @@
         </div>
     </div>
 
-    <div id="lessonFormModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="lessonModalTitle">Add Lesson</h2>
-                <span class="close" id="closeLessonFormModal">&times;</span>
+<!-- Lesson Form Modal -->
+<div id="lessonFormModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2 id="lessonModalTitle">Add Lesson</h2>
+        <form id="lessonForm">
+            <input type="hidden" id="lessonCourseId">
+            <input type="hidden" id="lessonId">
+            
+            <div class="form-group">
+                <label for="lessonTitle">Lesson Title *</label>
+                <input type="text" id="lessonTitle" required>
             </div>
-            <div class="modal-body">
-                <form id="lessonForm">
-                    <div class="form-group">
-                        <label for="lessonTitle">Lesson Title</label>
-                        <input type="text" id="lessonTitle" required>
-                    </div>
 
-                    <div class="form-group">
-                        <label for="lessonOrder">Order</label>
-                        <input type="number" id="lessonOrder" min="1" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="lessonVideoUrl">Video URL</label>
-                        <input type="url" id="lessonVideoUrl" required>
-                        <small>YouTube embed URL or direct video URL</small>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="lessonDuration">Duration (minutes)</label>
-                        <input type="number" id="lessonDuration" min="1" required>
-                    </div>
-
-                    <input type="hidden" id="lessonId">
-                    <input type="hidden" id="lessonCourseId">
-
-                    <div class="form-actions">
-                        <button type="button" class="btn btn-secondary" id="cancelLessonBtn">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Save Lesson</button>
-                    </div>
-                </form>
+            <div class="form-group">
+                <label for="lessonType">Lesson Type *</label>
+                <select id="lessonType" required>
+                    <option value="text">Text</option>
+                    <option value="video">Video</option>
+                    <option value="mixed">Mixed (Video + Text)</option>
+                </select>
             </div>
-        </div>
+
+            <div class="form-group" id="videoUrlGroup">
+                <label for="lessonVideoUrl">Video URL</label>
+                <input type="url" id="lessonVideoUrl" placeholder="https://youtube.com/watch?v=...">
+                <small>YouTube, Vimeo, or direct video URL</small>
+            </div>
+
+            <div class="form-group" id="contentGroup">
+                <label for="lessonContent">Lesson Content</label>
+                <textarea id="lessonContent" rows="12" placeholder="Enter lesson content. Basic HTML supported: <p>, <h3>, <ul>, <ol>, <strong>, <em>, <code>, <pre>, <blockquote>"></textarea>
+                <small>Use basic HTML tags for formatting</small>
+            </div>
+
+            <div class="form-group">
+                <label for="lessonOrder">Order *</label>
+                <input type="number" id="lessonOrder" min="1" required>
+            </div>
+
+            <div class="form-group">
+                <label for="lessonDuration">Duration (minutes)</label>
+                <input type="number" id="lessonDuration" min="0">
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" id="cancelLessonBtn">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Lesson</button>
+            </div>
+        </form>
+    </div>
+</div>
     </div>
 
     <script type="module" src="../js/firebase-config.js"></script>
