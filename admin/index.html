@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Clarity Academy</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container nav-container">
+            <a href="../index.html" class="logo">Clarity Academy</a>
+            <ul class="nav-links">
+                <li><a href="../courses.html">Courses</a></li>
+                <li><a href="../dashboard.html">Dashboard</a></li>
+                <li><a href="index.html">Admin</a></li>
+                <li><a href="#" id="logoutLink">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <section class="page-header">
+        <div class="container">
+            <h1>Admin Dashboard</h1>
+            <p>Manage courses and platform settings</p>
+        </div>
+    </section>
+
+    <section class="admin-section">
+        <div class="container">
+            <div class="admin-stats">
+                <div class="stat-card">
+                    <i class="fas fa-book"></i>
+                    <div class="stat-content">
+                        <h3 id="totalCourses">0</h3>
+                        <p>Total Courses</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-users"></i>
+                    <div class="stat-content">
+                        <h3 id="totalStudents">0</h3>
+                        <p>Total Students</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-graduation-cap"></i>
+                    <div class="stat-content">
+                        <h3 id="totalEnrollments">0</h3>
+                        <p>Total Enrollments</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="admin-actions">
+                <button class="btn btn-primary" id="createCourseBtn">
+                    <i class="fas fa-plus"></i> Create New Course
+                </button>
+            </div>
+
+            <div class="admin-courses">
+                <h2>Manage Courses</h2>
+                <div id="adminCoursesGrid" class="courses-grid">
+                    <div class="loading">Loading courses...</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div id="courseModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Create Course</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="courseForm">
+                    <div class="form-group">
+                        <label for="courseTitle">Course Title</label>
+                        <input type="text" id="courseTitle" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="courseSlug">URL Slug</label>
+                        <input type="text" id="courseSlug" required>
+                        <small>e.g., web-development-fundamentals</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="courseDescription">Description</label>
+                        <textarea id="courseDescription" rows="4" required></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="courseCategory">Category</label>
+                        <select id="courseCategory" required>
+                            <option value="">Select Category</option>
+                            <option value="Development">Development</option>
+                            <option value="Business">Business</option>
+                            <option value="Design">Design</option>
+                            <option value="Marketing">Marketing</option>
+                            <option value="Data Science">Data Science</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="courseInstructor">Instructor Name</label>
+                        <input type="text" id="courseInstructor" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="courseThumbnail">Thumbnail URL</label>
+                        <input type="url" id="courseThumbnail" required>
+                        <small>Enter a valid image URL</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="coursePrice">Price (USD)</label>
+                        <input type="number" id="coursePrice" min="0" step="0.01" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="coursePublished">
+                            Published (visible to students)
+                        </label>
+                    </div>
+
+                    <input type="hidden" id="courseId">
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="saveCourseBtn">Save Course</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="lessonsModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>Manage Lessons</h2>
+                <span class="close" id="closeLessonsModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="lessons-manager">
+                    <div class="lessons-header">
+                        <h3 id="lessonsCourseName"></h3>
+                        <button class="btn btn-primary btn-sm" id="addLessonBtn">
+                            <i class="fas fa-plus"></i> Add Lesson
+                        </button>
+                    </div>
+
+                    <div id="lessonsList" class="lessons-admin-list">
+                        <div class="loading">Loading lessons...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="lessonFormModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="lessonModalTitle">Add Lesson</h2>
+                <span class="close" id="closeLessonFormModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="lessonForm">
+                    <div class="form-group">
+                        <label for="lessonTitle">Lesson Title</label>
+                        <input type="text" id="lessonTitle" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="lessonOrder">Order</label>
+                        <input type="number" id="lessonOrder" min="1" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="lessonVideoUrl">Video URL</label>
+                        <input type="url" id="lessonVideoUrl" required>
+                        <small>YouTube embed URL or direct video URL</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="lessonDuration">Duration (minutes)</label>
+                        <input type="number" id="lessonDuration" min="1" required>
+                    </div>
+
+                    <input type="hidden" id="lessonId">
+                    <input type="hidden" id="lessonCourseId">
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" id="cancelLessonBtn">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Lesson</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="../js/firebase-config.js"></script>
+    <script type="module" src="../js/auth.js"></script>
+    <script type="module" src="../js/admin.js"></script>
+</body>
+</html>
