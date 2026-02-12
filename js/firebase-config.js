@@ -2,12 +2,14 @@
 // Replace these values with your Firebase project credentials
 
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
+    apiKey: "AIzaSyBRc4xefCeCv1mGlPfEqzYFILIFuXcW_aw",
+    authDomain: "clarity-academy-b8d82.firebaseapp.com",
+    projectId: "clarity-academy-b8d82",
+    storageBucket: "clarity-academy-b8d82.firebasestorage.app",
     storageBucket: "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    messagingSenderId: "360424313451",
+    appId: "1:360424313451:web:3931df68f4d3dd161c972e",
+    measurementId: "G-MPNTHSSMJQ"
 };
 
 // Import Firebase SDKs
