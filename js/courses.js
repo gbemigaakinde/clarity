@@ -11,12 +11,12 @@ async function loadCourses() {
         const coursesRef = collection(db, 'courses');
         const q = query(coursesRef, where('published', '==', true), orderBy('title'));
         const querySnapshot = await getDocs(q);
-
+        
         allCourses = [];
         querySnapshot.forEach((doc) => {
             allCourses.push({ id: doc.id, ...doc.data() });
         });
-
+        
         displayCourses(allCourses);
     } catch (error) {
         console.error('Error loading courses:', error);
@@ -31,7 +31,7 @@ function displayCourses(courses) {
         grid.innerHTML = '<p class="loading">No courses found.</p>';
         return;
     }
-
+    
     grid.innerHTML = '';
     courses.forEach((course) => {
         const courseCard = createCourseCard(course.id, course);
@@ -43,12 +43,19 @@ function createCourseCard(id, course) {
     const card = document.createElement('div');
     card.className = 'course-card';
     card.onclick = () => window.location.href = `course-detail.html?id=${id}`;
-
-    const lessonCount = course.lessons ? course.lessons.length : 0;
-    const totalDuration = course.lessons 
-        ? course.lessons.reduce((sum, lesson) => sum + (lesson.duration || 0), 0)
+    
+    // Calculate from modules structure
+    const moduleCount = course.modules ? course.modules.length : 0;
+    const lessonCount = course.modules 
+        ? course.modules.reduce((sum, mod) => sum + (mod.lessons?.length || 0), 0)
         : 0;
-
+    const totalDuration = course.modules 
+        ? course.modules.reduce((sum, mod) => {
+            const modDuration = mod.lessons?.reduce((s, l) => s + (l.duration || 0), 0) || 0;
+            return sum + modDuration;
+        }, 0)
+        : 0;
+    
     card.innerHTML = `
         <img src="${course.thumbnail || 'https://via.placeholder.com/400x200'}" alt="${course.title}">
         <div class="course-card-content">
@@ -64,17 +71,21 @@ function createCourseCard(id, course) {
             </div>
             <div class="course-meta" style="margin-top: 0.5rem; border-top: none; padding-top: 0;">
                 <span style="font-size: 0.875rem; color: var(--text-secondary);">
+                    <i class="fas fa-layer-group"></i>
+                    ${moduleCount} modules
+                </span>
+                <span style="font-size: 0.875rem; color: var(--text-secondary);">
                     <i class="fas fa-play-circle"></i>
                     ${lessonCount} lessons
                 </span>
-                <span style="font-size: 0.875rem; color: var(--text-secondary);">
-                    <i class="fas fa-clock"></i>
-                    ${totalDuration} min
-                </span>
+            </div>
+            <div style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-secondary);">
+                <i class="fas fa-clock"></i>
+                ${totalDuration} min total
             </div>
         </div>
     `;
-
+    
     return card;
 }
 
@@ -82,7 +93,7 @@ function createCourseCard(id, course) {
 function filterCourses() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase();
     const categoryFilter = document.getElementById('categoryFilter').value;
-
+    
     const filtered = allCourses.filter(course => {
         const matchesSearch = course.title.toLowerCase().includes(searchTerm) ||
                             course.description.toLowerCase().includes(searchTerm);
@@ -90,21 +101,21 @@ function filterCourses() {
         
         return matchesSearch && matchesCategory;
     });
-
+    
     displayCourses(filtered);
 }
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     loadCourses();
-
+    
     const searchInput = document.getElementById('searchInput');
     const categoryFilter = document.getElementById('categoryFilter');
-
+    
     if (searchInput) {
         searchInput.addEventListener('input', filterCourses);
     }
-
+    
     if (categoryFilter) {
         categoryFilter.addEventListener('change', filterCourses);
     }
