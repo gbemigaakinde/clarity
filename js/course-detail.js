@@ -71,15 +71,28 @@ function displayCourseDetails() {
         : '<button id="enrollBtn" class="btn btn-primary btn-full">Enroll Now - $' + courseData.price + '</button>';
 
     const curriculumHTML = courseData.lessons && courseData.lessons.length > 0
-        ? courseData.lessons.map((lesson, index) => `
-            <li class="curriculum-item">
-                <div class="lesson-info">
-                    <h4>${index + 1}. ${lesson.title}</h4>
-                    <span>${lesson.duration} minutes</span>
-                </div>
-                ${isEnrolled ? '<i class="fas fa-play-circle"></i>' : '<i class="fas fa-lock"></i>'}
-            </li>
-        `).join('')
+        ? courseData.lessons.map((lesson, index) => {
+            // Determine type icon (backward compatibility)
+            const lessonType = lesson.type || (lesson.videoUrl ? 'video' : 'text');
+            let typeIcon = 'fa-video';
+            if (lessonType === 'text') {
+                typeIcon = 'fa-file-alt';
+            } else if (lessonType === 'mixed') {
+                typeIcon = 'fa-layer-group';
+            }
+            
+            const durationText = lesson.duration ? `${lesson.duration} minutes` : '';
+            
+            return `
+                <li class="curriculum-item">
+                    <div class="lesson-info">
+                        <h4><i class="fas ${typeIcon}"></i> ${index + 1}. ${lesson.title}</h4>
+                        ${durationText ? `<span>${durationText}</span>` : ''}
+                    </div>
+                    ${isEnrolled ? '<i class="fas fa-play-circle"></i>' : '<i class="fas fa-lock"></i>'}
+                </li>
+            `;
+        }).join('')
         : '<li class="curriculum-item"><p>No lessons available yet.</p></li>';
 
     contentDiv.innerHTML = `
@@ -100,10 +113,10 @@ function displayCourseDetails() {
                         <i class="fas fa-play-circle"></i>
                         ${lessonCount} Lessons
                     </span>
-                    <span>
+                    ${totalDuration > 0 ? `<span>
                         <i class="fas fa-clock"></i>
                         ${totalDuration} Minutes
-                    </span>
+                    </span>` : ''}
                 </div>
             </div>
         </section>
@@ -131,13 +144,13 @@ function displayCourseDetails() {
                             <h4>This course includes:</h4>
                             <ul style="list-style: none; margin-top: 1rem;">
                                 <li style="margin-bottom: 0.5rem;">
-                                    <i class="fas fa-play-circle"></i>
-                                    ${lessonCount} video lessons
+                                    <i class="fas fa-book-open"></i>
+                                    ${lessonCount} lessons
                                 </li>
-                                <li style="margin-bottom: 0.5rem;">
+                                ${totalDuration > 0 ? `<li style="margin-bottom: 0.5rem;">
                                     <i class="fas fa-clock"></i>
                                     ${totalDuration} minutes of content
-                                </li>
+                                </li>` : ''}
                                 <li style="margin-bottom: 0.5rem;">
                                     <i class="fas fa-mobile-alt"></i>
                                     Access on mobile and desktop
