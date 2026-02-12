@@ -61,39 +61,62 @@ async function checkEnrollment() {
 
 function displayCourseDetails() {
     const contentDiv = document.getElementById('courseContent');
-    const lessonCount = courseData.lessons ? courseData.lessons.length : 0;
-    const totalDuration = courseData.lessons 
-        ? courseData.lessons.reduce((sum, lesson) => sum + (lesson.duration || 0), 0)
+    
+    // Calculate totals from modules
+    const moduleCount = courseData.modules ? courseData.modules.length : 0;
+    const lessonCount = courseData.modules 
+        ? courseData.modules.reduce((sum, mod) => sum + (mod.lessons?.length || 0), 0)
+        : 0;
+    const totalDuration = courseData.modules 
+        ? courseData.modules.reduce((sum, mod) => {
+            const modDuration = mod.lessons?.reduce((s, l) => s + (l.duration || 0), 0) || 0;
+            return sum + modDuration;
+        }, 0)
         : 0;
 
     const enrollButton = isEnrolled 
-        ? '<a href="lesson.html?courseId=' + courseId + '&lessonIndex=0" class="btn btn-primary btn-full">Continue Learning</a>'
+        ? '<a href="lesson.html?courseId=' + courseId + '" class="btn btn-primary btn-full">Continue Learning</a>'
         : '<button id="enrollBtn" class="btn btn-primary btn-full">Enroll Now - $' + courseData.price + '</button>';
 
-    const curriculumHTML = courseData.lessons && courseData.lessons.length > 0
-        ? courseData.lessons.map((lesson, index) => {
-            // Determine type icon (backward compatibility)
-            const lessonType = lesson.type || (lesson.videoUrl ? 'video' : 'text');
-            let typeIcon = 'fa-video';
-            if (lessonType === 'text') {
-                typeIcon = 'fa-file-alt';
-            } else if (lessonType === 'mixed') {
-                typeIcon = 'fa-layer-group';
-            }
-            
-            const durationText = lesson.duration ? `${lesson.duration} minutes` : '';
+    // Build curriculum HTML from modules
+    const curriculumHTML = courseData.modules && courseData.modules.length > 0
+        ? courseData.modules.sort((a, b) => a.order - b.order).map((module, modIndex) => {
+            const moduleLessons = module.lessons || [];
+            const lessonsHTML = moduleLessons.sort((a, b) => a.order - b.order).map((lesson, lessonIndex) => {
+                let typeIcon = 'fa-video';
+                if (lesson.type === 'text') {
+                    typeIcon = 'fa-file-alt';
+                } else if (lesson.type === 'mixed') {
+                    typeIcon = 'fa-layer-group';
+                }
+                
+                const durationText = lesson.duration ? `${lesson.duration} min` : '';
+                
+                return `
+                    <li class="curriculum-item" style="margin-left: 2rem;">
+                        <div class="lesson-info">
+                            <h5 style="font-weight: 500; font-size: 0.95rem;">
+                                <i class="fas ${typeIcon}"></i> ${lesson.order}. ${lesson.title}
+                            </h5>
+                            ${durationText ? `<span style="font-size: 0.875rem;">${durationText}</span>` : ''}
+                        </div>
+                        ${isEnrolled ? '<i class="fas fa-play-circle"></i>' : '<i class="fas fa-lock"></i>'}
+                    </li>
+                `;
+            }).join('');
             
             return `
-                <li class="curriculum-item">
+                <li class="curriculum-item" style="background: #f8f9fa; margin-bottom: 0.5rem;">
                     <div class="lesson-info">
-                        <h4><i class="fas ${typeIcon}"></i> ${index + 1}. ${lesson.title}</h4>
-                        ${durationText ? `<span>${durationText}</span>` : ''}
+                        <h4><i class="fas fa-layer-group"></i> Module ${module.order}: ${module.title}</h4>
+                        ${module.description ? `<p style="margin: 0.25rem 0 0 0; color: var(--text-secondary); font-size: 0.875rem;">${module.description}</p>` : ''}
                     </div>
-                    ${isEnrolled ? '<i class="fas fa-play-circle"></i>' : '<i class="fas fa-lock"></i>'}
+                    <span style="font-size: 0.875rem; color: var(--text-secondary);">${moduleLessons.length} lessons</span>
                 </li>
+                ${lessonsHTML}
             `;
         }).join('')
-        : '<li class="curriculum-item"><p>No lessons available yet.</p></li>';
+        : '<li class="curriculum-item"><p>No modules or lessons available yet.</p></li>';
 
     contentDiv.innerHTML = `
         <section class="course-detail-header">
@@ -108,6 +131,10 @@ function displayCourseDetails() {
                     <span>
                         <i class="fas fa-folder"></i>
                         ${courseData.category}
+                    </span>
+                    <span>
+                        <i class="fas fa-layer-group"></i>
+                        ${moduleCount} Modules
                     </span>
                     <span>
                         <i class="fas fa-play-circle"></i>
@@ -144,6 +171,10 @@ function displayCourseDetails() {
                             <h4>This course includes:</h4>
                             <ul style="list-style: none; margin-top: 1rem;">
                                 <li style="margin-bottom: 0.5rem;">
+                                    <i class="fas fa-layer-group"></i>
+                                    ${moduleCount} modules
+                                </li>
+                                <li style="margin-bottom: 0.5rem;">
                                     <i class="fas fa-book-open"></i>
                                     ${lessonCount} lessons
                                 </li>
@@ -167,7 +198,6 @@ function displayCourseDetails() {
         </section>
     `;
 
-    // Add enroll button handler
     const enrollBtn = document.getElementById('enrollBtn');
     if (enrollBtn) {
         enrollBtn.addEventListener('click', handleEnrollment);
@@ -186,7 +216,6 @@ async function handleEnrollment() {
     enrollBtn.textContent = 'Enrolling...';
 
     try {
-        // Create enrollment
         await addDoc(collection(db, 'enrollments'), {
             userId: auth.currentUser.uid,
             courseId: courseId,
@@ -195,17 +224,24 @@ async function handleEnrollment() {
             completedLessons: []
         });
 
-        // Create initial progress document
+        // Get first module and lesson
+        const firstModule = courseData.modules?.sort((a, b) => a.order - b.order)[0];
+        const firstLesson = firstModule?.lessons?.sort((a, b) => a.order - b.order)[0];
+
         await addDoc(collection(db, 'progress'), {
             userId: auth.currentUser.uid,
             courseId: courseId,
-            completedLessons: [],
-            lastAccessedLesson: 0,
+            completedModules: [],
+            completedLessons: {},
+            currentModule: firstModule?.id || null,
+            currentLesson: firstLesson?.id || null,
+            lastAccessedAt: new Date(),
+            accessHistory: [],
             updatedAt: new Date()
         });
 
         alert('Successfully enrolled! Redirecting to course...');
-        window.location.href = `lesson.html?courseId=${courseId}&lessonIndex=0`;
+        window.location.href = `lesson.html?courseId=${courseId}`;
     } catch (error) {
         console.error('Error enrolling:', error);
         alert('Error enrolling in course. Please try again.');
