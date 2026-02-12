@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lesson - Clarity Academy</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container nav-container">
+            <a href="index.html" class="logo">Clarity Academy</a>
+            <ul class="nav-links">
+                <li><a href="courses.html">Courses</a></li>
+                <li><a href="dashboard.html" id="dashboardLink">Dashboard</a></li>
+                <li><a href="admin/index.html" id="adminLink" style="display: none;">Admin</a></li>
+                <li><a href="#" id="logoutLink">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="lesson-container">
+        <aside class="lesson-sidebar">
+            <div class="course-header">
+                <h3 id="courseTitle">Loading...</h3>
+                <a href="dashboard.html" class="back-link">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+            <div id="lessonsList" class="lessons-list">
+                <div class="loading">Loading lessons...</div>
+            </div>
+        </aside>
+
+        <main class="lesson-main">
+            <div id="lessonContent" class="lesson-content">
+                <div class="loading">Loading lesson...</div>
+            </div>
+        </main>
+    </div>
+
+    <script type="module" src="js/firebase-config.js"></script>
+    <script type="module" src="js/auth.js"></script>
+    <script type="module" src="js/lesson.js"></script>
+</body>
+</html>
