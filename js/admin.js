@@ -352,31 +352,74 @@ function openLessonFormModal(lessonIndex = null) {
         const lesson = currentEditingCourseData.lessons[lessonIndex];
         document.getElementById('lessonTitle').value = lesson.title;
         document.getElementById('lessonOrder').value = lesson.order;
-        document.getElementById('lessonVideoUrl').value = lesson.videoUrl;
-        document.getElementById('lessonDuration').value = lesson.duration;
+        document.getElementById('lessonType').value = lesson.type || 'video';
+        document.getElementById('lessonVideoUrl').value = lesson.videoUrl || '';
+        document.getElementById('lessonContent').value = lesson.content || '';
+        document.getElementById('lessonDuration').value = lesson.duration || '';
         document.getElementById('lessonId').value = lessonIndex;
+        
+        // Toggle field visibility
+        toggleLessonFields(lesson.type || 'video');
     } else {
         // Create mode
         modalTitle.textContent = 'Add Lesson';
         const nextOrder = currentEditingCourseData.lessons ? currentEditingCourseData.lessons.length + 1 : 1;
         document.getElementById('lessonOrder').value = nextOrder;
         document.getElementById('lessonId').value = '';
+        document.getElementById('lessonType').value = 'text';
+        
+        // Toggle field visibility
+        toggleLessonFields('text');
     }
 
     document.getElementById('lessonCourseId').value = currentEditingCourseId;
     modal.classList.add('active');
 }
 
+// Toggle lesson form fields based on type
+function toggleLessonFields(type) {
+    const videoUrlGroup = document.getElementById('videoUrlGroup');
+    const contentGroup = document.getElementById('contentGroup');
+    
+    if (type === 'video') {
+        videoUrlGroup.style.display = 'block';
+        contentGroup.style.display = 'none';
+        document.getElementById('lessonVideoUrl').required = true;
+        document.getElementById('lessonContent').required = false;
+    } else if (type === 'text') {
+        videoUrlGroup.style.display = 'none';
+        contentGroup.style.display = 'block';
+        document.getElementById('lessonVideoUrl').required = false;
+        document.getElementById('lessonContent').required = true;
+    } else if (type === 'mixed') {
+        videoUrlGroup.style.display = 'block';
+        contentGroup.style.display = 'block';
+        document.getElementById('lessonVideoUrl').required = true;
+        document.getElementById('lessonContent').required = true;
+    }
+}
+
 // Handle lesson save
 async function handleLessonSave(e) {
     e.preventDefault();
 
+    const lessonType = document.getElementById('lessonType').value;
+    
     const lessonData = {
         title: document.getElementById('lessonTitle').value,
         order: parseInt(document.getElementById('lessonOrder').value),
-        videoUrl: document.getElementById('lessonVideoUrl').value,
-        duration: parseInt(document.getElementById('lessonDuration').value)
+        type: lessonType,
+        duration: parseInt(document.getElementById('lessonDuration').value) || null
     };
+    
+    // Add fields based on type
+    if (lessonType === 'video' || lessonType === 'mixed') {
+        lessonData.videoUrl = document.getElementById('lessonVideoUrl').value;
+    }
+    
+    if (lessonType === 'text' || lessonType === 'mixed') {
+        lessonData.content = document.getElementById('lessonContent').value;
+    }
 
     const lessonIndex = document.getElementById('lessonId').value;
     const lessons = currentEditingCourseData.lessons || [];
@@ -408,6 +451,111 @@ async function handleLessonSave(e) {
         console.error('Error saving lesson:', error);
         alert('Error saving lesson. Please try again.');
     }
+}
+
+function displayLessonsList(lessons) {
+    const lessonsList = document.getElementById('lessonsList');
+    
+    if (lessons.length === 0) {
+        lessonsList.innerHTML = '<p class="loading">No lessons yet. Add your first lesson!</p>';
+        return;
+    }
+
+    // Sort lessons by order
+    const sortedLessons = [...lessons].sort((a, b) => a.order - b.order);
+
+    lessonsList.innerHTML = '';
+    sortedLessons.forEach((lesson, index) => {
+        const lessonItem = document.createElement('div');
+        lessonItem.className = 'lesson-admin-item';
+        
+        // Determine type icon and label
+        let typeIcon = 'fa-video';
+        let typeLabel = 'Video';
+        if (lesson.type === 'text') {
+            typeIcon = 'fa-file-alt';
+            typeLabel = 'Text';
+        } else if (lesson.type === 'mixed') {
+            typeIcon = 'fa-layer-group';
+            typeLabel = 'Mixed';
+        } else if (!lesson.type && lesson.videoUrl) {
+            // Backward compatibility
+            typeIcon = 'fa-video';
+            typeLabel = 'Video';
+        }
+        
+        const durationText = lesson.duration ? `${lesson.duration} minutes` : 'No duration set';
+
+        lessonItem.innerHTML = `
+            <div class="lesson-admin-info">
+                <h4>${lesson.order}. ${lesson.title}</h4>
+                <p>
+                    <i class="fas ${typeIcon}"></i> ${typeLabel} | 
+                    <i class="fas fa-clock"></i> ${durationText}
+                </p>
+            </div>
+            <div class="lesson-admin-actions">
+                <button class="btn btn-sm btn-primary" onclick="window.adminPanel.editLesson(${index})">
+                    <i class="fas fa-edit"></i> Edit
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="window.adminPanel.deleteLesson(${index})">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
+            </div>
+        `;
+
+        lessonsList.appendChild(lessonItem);
+    });
+}
+
+// Add event listener for lesson type change
+function setupModals() {
+    const createBtn = document.getElementById('createCourseBtn');
+    const courseModal = document.getElementById('courseModal');
+    const lessonsModal = document.getElementById('lessonsModal');
+    const lessonFormModal = document.getElementById('lessonFormModal');
+    
+    const closeBtns = document.querySelectorAll('.close');
+    const cancelBtn = document.getElementById('cancelBtn');
+
+    // Create course button
+    createBtn.addEventListener('click', () => {
+        openCourseModal();
+    });
+
+    // Close buttons
+    closeBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            courseModal.classList.remove('active');
+            lessonsModal.classList.remove('active');
+            lessonFormModal.classList.remove('active');
+        });
+    });
+
+    cancelBtn.addEventListener('click', () => {
+        courseModal.classList.remove('active');
+    });
+
+    // Cancel lesson button
+    document.getElementById('cancelLessonBtn').addEventListener('click', () => {
+        lessonFormModal.classList.remove('active');
+    });
+
+    // Course form submit
+    document.getElementById('courseForm').addEventListener('submit', handleCourseSave);
+
+    // Lesson form submit
+    document.getElementById('lessonForm').addEventListener('submit', handleLessonSave);
+
+    // Add lesson button
+    document.getElementById('addLessonBtn').addEventListener('click', () => {
+        openLessonFormModal();
+    });
+    
+    // Lesson type change listener
+    document.getElementById('lessonType').addEventListener('change', (e) => {
+        toggleLessonFields(e.target.value);
+    });
 }
 
 // Edit lesson
