@@ -75,6 +75,76 @@ async function loadProgress() {
     }
 }
 
+// Display current lesson
+function displayCurrentLesson() {
+    const lessonContent = document.getElementById('lessonContent');
+    
+    if (!courseData.lessons || currentLessonIndex >= courseData.lessons.length) {
+        lessonContent.innerHTML = '<p class="loading">Lesson not found.</p>';
+        return;
+    }
+
+    const lesson = courseData.lessons[currentLessonIndex];
+    const isCompleted = completedLessons.includes(currentLessonIndex);
+    const hasNext = currentLessonIndex < courseData.lessons.length - 1;
+    const hasPrev = currentLessonIndex > 0;
+    
+    // Determine lesson type (backward compatibility)
+    const lessonType = lesson.type || (lesson.videoUrl ? 'video' : 'text');
+
+    // Build content HTML based on type
+    let contentHTML = '';
+    
+    if (lessonType === 'video' || lessonType === 'mixed') {
+        let videoEmbed = lesson.videoUrl;
+        if (lesson.videoUrl.includes('youtube.com') || lesson.videoUrl.includes('youtu.be')) {
+            const videoId = extractYouTubeId(lesson.videoUrl);
+            if (videoId) {
+                videoEmbed = `https://www.youtube.com/embed/${videoId}`;
+            }
+        }
+        
+        contentHTML += `
+            <div class="video-container">
+                ${videoEmbed.includes('youtube.com/embed') 
+                    ? `<iframe src="${videoEmbed}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
+                    : `<video controls src="${videoEmbed}"></video>`
+                }
+            </div>
+        `;
+    }
+    
+    if (lessonType === 'text' || lessonType === 'mixed') {
+        contentHTML += `
+            <div class="lesson-text-content">
+                ${lesson.content || ''}
+            </div>
+        `;
+    }
+
+    lessonContent.innerHTML = `
+        <h1>${lesson.title}</h1>
+        ${contentHTML}
+        
+        <div class="lesson-actions">
+            ${hasPrev ? `<button class="btn btn-secondary" onclick="window.lessonView.prevLesson()">
+                <i class="fas fa-arrow-left"></i> Previous
+            </button>` : '<div></div>'}
+            
+            <button class="btn ${isCompleted ? 'btn-secondary' : 'btn-primary'}" onclick="window.lessonView.toggleComplete()">
+                ${isCompleted ? '<i class="fas fa-check-circle"></i> Completed' : '<i class="far fa-circle"></i> Mark as Complete'}
+            </button>
+            
+            ${hasNext ? `<button class="btn btn-primary" onclick="window.lessonView.nextLesson()">
+                Next <i class="fas fa-arrow-right"></i>
+            </button>` : '<div></div>'}
+        </div>
+    `;
+
+    // Update progress
+    updateLastAccessedLesson();
+}
+
 // Display lessons list
 function displayLessonsList() {
     const lessonsList = document.getElementById('lessonsList');
@@ -96,6 +166,17 @@ function displayLessonsList() {
         if (completedLessons.includes(index)) {
             lessonItem.classList.add('completed');
         }
+        
+        // Determine type icon (backward compatibility)
+        const lessonType = lesson.type || (lesson.videoUrl ? 'video' : 'text');
+        let typeIcon = 'fa-video';
+        if (lessonType === 'text') {
+            typeIcon = 'fa-file-alt';
+        } else if (lessonType === 'mixed') {
+            typeIcon = 'fa-layer-group';
+        }
+        
+        const durationText = lesson.duration ? `${lesson.duration} min` : '';
 
         lessonItem.innerHTML = `
             <div class="lesson-item-header">
@@ -103,7 +184,8 @@ function displayLessonsList() {
                 ${completedLessons.includes(index) ? '<i class="fas fa-check-circle"></i>' : ''}
             </div>
             <div class="lesson-item-meta">
-                <span><i class="fas fa-clock"></i> ${lesson.duration} min</span>
+                <span><i class="fas ${typeIcon}"></i> ${lessonType.charAt(0).toUpperCase() + lessonType.slice(1)}</span>
+                ${durationText ? `<span><i class="fas fa-clock"></i> ${durationText}</span>` : ''}
             </div>
         `;
 
@@ -116,57 +198,6 @@ function displayLessonsList() {
 
         lessonsList.appendChild(lessonItem);
     });
-}
-
-// Display current lesson
-function displayCurrentLesson() {
-    const lessonContent = document.getElementById('lessonContent');
-    
-    if (!courseData.lessons || currentLessonIndex >= courseData.lessons.length) {
-        lessonContent.innerHTML = '<p class="loading">Lesson not found.</p>';
-        return;
-    }
-
-    const lesson = courseData.lessons[currentLessonIndex];
-    const isCompleted = completedLessons.includes(currentLessonIndex);
-    const hasNext = currentLessonIndex < courseData.lessons.length - 1;
-    const hasPrev = currentLessonIndex > 0;
-
-    // Extract video ID from URL if it's a YouTube link
-    let videoEmbed = lesson.videoUrl;
-    if (lesson.videoUrl.includes('youtube.com') || lesson.videoUrl.includes('youtu.be')) {
-        const videoId = extractYouTubeId(lesson.videoUrl);
-        if (videoId) {
-            videoEmbed = `https://www.youtube.com/embed/${videoId}`;
-        }
-    }
-
-    lessonContent.innerHTML = `
-        <h1>${lesson.title}</h1>
-        <div class="video-container">
-            ${videoEmbed.includes('youtube.com/embed') 
-                ? `<iframe src="${videoEmbed}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
-                : `<video controls src="${videoEmbed}"></video>`
-            }
-        </div>
-        
-        <div class="lesson-actions">
-            ${hasPrev ? `<button class="btn btn-secondary" onclick="window.lessonView.prevLesson()">
-                <i class="fas fa-arrow-left"></i> Previous
-            </button>` : '<div></div>'}
-            
-            <button class="btn ${isCompleted ? 'btn-secondary' : 'btn-primary'}" onclick="window.lessonView.toggleComplete()">
-                ${isCompleted ? '<i class="fas fa-check-circle"></i> Completed' : '<i class="far fa-circle"></i> Mark as Complete'}
-            </button>
-            
-            ${hasNext ? `<button class="btn btn-primary" onclick="window.lessonView.nextLesson()">
-                Next <i class="fas fa-arrow-right"></i>
-            </button>` : '<div></div>'}
-        </div>
-    `;
-
-    // Update progress
-    updateLastAccessedLesson();
 }
 
 function extractYouTubeId(url) {
