@@ -68,6 +68,7 @@
         </div>
     </section>
 
+    <!-- Course Form Modal -->
     <div id="courseModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -76,24 +77,6 @@
             </div>
             <div class="modal-body">
                 <form id="courseForm">
-                    <div class="form-group">
-    <label for="courseAccessType">Default Access Type</label>
-    <select id="courseAccessType">
-        <option value="sequential">Sequential</option>
-        <option value="anytime">Anytime</option>
-        <option value="daily">Daily</option>
-        <option value="weekly">Weekly</option>
-        <option value="monthly">Monthly</option>
-    </select>
-    <small>Default access rule for all lessons</small>
-</div>
-
-<div class="form-group">
-    <label>
-        <input type="checkbox" id="courseAllowSkip">
-        Allow students to skip lessons
-    </label>
-</div>
                     <div class="form-group">
                         <label for="courseTitle">Course Title</label>
                         <input type="text" id="courseTitle" required>
@@ -119,6 +102,7 @@
                             <option value="Design">Design</option>
                             <option value="Marketing">Marketing</option>
                             <option value="Data Science">Data Science</option>
+                            <option value="Language">Language</option>
                         </select>
                     </div>
 
@@ -136,6 +120,25 @@
                     <div class="form-group">
                         <label for="coursePrice">Price (USD)</label>
                         <input type="number" id="coursePrice" min="0" step="0.01" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="courseAccessType">Default Access Type</label>
+                        <select id="courseAccessType">
+                            <option value="sequential">Sequential</option>
+                            <option value="anytime">Anytime</option>
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="monthly">Monthly</option>
+                        </select>
+                        <small>Default access rule for all lessons</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="courseAllowSkip">
+                            Allow students to skip lessons
+                        </label>
                     </div>
 
                     <div class="form-group">
@@ -157,134 +160,134 @@
     </div>
 
     <!-- Module Management Modal -->
-<div id="modulesModal" class="modal">
-    <div class="modal-content modal-large">
-        <div class="modal-header">
-            <h2>Manage Modules & Lessons</h2>
-            <span class="close" id="closeModulesModal">&times;</span>
-        </div>
-        <div class="modal-body">
-            <div class="modules-manager">
-                <div class="modules-header">
-                    <h3 id="modulesCourseName"></h3>
-                    <button class="btn btn-primary btn-sm" id="addModuleBtn">
-                        <i class="fas fa-plus"></i> Add Module
-                    </button>
-                </div>
+    <div id="modulesModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>Manage Modules & Lessons</h2>
+                <span class="close" id="closeModulesModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="modules-manager">
+                    <div class="modules-header">
+                        <h3 id="modulesCourseName"></h3>
+                        <button class="btn btn-primary btn-sm" id="addModuleBtn">
+                            <i class="fas fa-plus"></i> Add Module
+                        </button>
+                    </div>
 
-                <div id="modulesList" class="modules-admin-list">
-                    <div class="loading">Loading modules...</div>
+                    <div id="modulesList" class="modules-admin-list">
+                        <div class="loading">Loading modules...</div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- Module Form Modal -->
-<div id="moduleFormModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2 id="moduleModalTitle">Add Module</h2>
-            <span class="close">&times;</span>
-        </div>
-        <div class="modal-body">
-            <form id="moduleForm">
-                <input type="hidden" id="moduleCourseId">
-                <input type="hidden" id="moduleId">
-                
-                <div class="form-group">
-                    <label for="moduleTitle">Module Title *</label>
-                    <input type="text" id="moduleTitle" required>
-                </div>
+    <!-- Module Form Modal -->
+    <div id="moduleFormModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="moduleModalTitle">Add Module</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="moduleForm">
+                    <input type="hidden" id="moduleCourseId">
+                    <input type="hidden" id="moduleId">
+                    
+                    <div class="form-group">
+                        <label for="moduleTitle">Module Title *</label>
+                        <input type="text" id="moduleTitle" required>
+                    </div>
 
-                <div class="form-group">
-                    <label for="moduleDescription">Module Description</label>
-                    <textarea id="moduleDescription" rows="3"></textarea>
-                </div>
+                    <div class="form-group">
+                        <label for="moduleDescription">Module Description</label>
+                        <textarea id="moduleDescription" rows="3"></textarea>
+                    </div>
 
-                <div class="form-group">
-                    <label for="moduleOrder">Order *</label>
-                    <input type="number" id="moduleOrder" min="1" required>
-                </div>
+                    <div class="form-group">
+                        <label for="moduleOrder">Order *</label>
+                        <input type="number" id="moduleOrder" min="1" required>
+                    </div>
 
-                <div class="form-actions">
-                    <button type="button" class="btn btn-secondary" id="cancelModuleBtn">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Module</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Lesson Form Modal (Updated) -->
-<div id="lessonFormModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2 id="lessonModalTitle">Add Lesson</h2>
-            <span class="close">&times;</span>
-        </div>
-        <div class="modal-body">
-            <form id="lessonForm">
-                <input type="hidden" id="lessonCourseId">
-                <input type="hidden" id="lessonModuleId">
-                <input type="hidden" id="lessonId">
-                
-                <div class="form-group">
-                    <label for="lessonTitle">Lesson Title *</label>
-                    <input type="text" id="lessonTitle" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="lessonType">Lesson Type *</label>
-                    <select id="lessonType" required>
-                        <option value="text">Text</option>
-                        <option value="video">Video</option>
-                        <option value="mixed">Mixed (Video + Text)</option>
-                    </select>
-                </div>
-
-                <div class="form-group" id="videoUrlGroup">
-                    <label for="lessonVideoUrl">Video URL</label>
-                    <input type="url" id="lessonVideoUrl" placeholder="https://youtube.com/watch?v=...">
-                    <small>YouTube, Vimeo, or direct video URL</small>
-                </div>
-
-                <div class="form-group" id="contentGroup">
-                    <label for="lessonContent">Lesson Content</label>
-                    <textarea id="lessonContent" rows="12" placeholder="Enter lesson content. Basic HTML supported."></textarea>
-                    <small>Use basic HTML tags for formatting</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="lessonOrder">Order *</label>
-                    <input type="number" id="lessonOrder" min="1" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="lessonDuration">Duration (minutes)</label>
-                    <input type="number" id="lessonDuration" min="0">
-                </div>
-
-                <div class="form-group">
-                    <label for="lessonAccessRule">Access Rule *</label>
-                    <select id="lessonAccessRule" required>
-                        <option value="sequential">Sequential (Must complete previous)</option>
-                        <option value="anytime">Anytime (No restrictions)</option>
-                        <option value="daily">Daily (One per day)</option>
-                        <option value="weekly">Weekly (One per week)</option>
-                        <option value="monthly">Monthly (One per month)</option>
-                    </select>
-                    <small>Control when students can access this lesson</small>
-                </div>
-
-                <div class="form-actions">
-                    <button type="button" class="btn btn-secondary" id="cancelLessonBtn">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Lesson</button>
-                </div>
-            </form>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" id="cancelModuleBtn">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Module</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
-</div>
+
+    <!-- Lesson Form Modal -->
+    <div id="lessonFormModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="lessonModalTitle">Add Lesson</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="lessonForm">
+                    <input type="hidden" id="lessonCourseId">
+                    <input type="hidden" id="lessonModuleId">
+                    <input type="hidden" id="lessonId">
+                    
+                    <div class="form-group">
+                        <label for="lessonTitle">Lesson Title *</label>
+                        <input type="text" id="lessonTitle" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="lessonType">Lesson Type *</label>
+                        <select id="lessonType" required>
+                            <option value="text">Text</option>
+                            <option value="video">Video</option>
+                            <option value="mixed">Mixed (Video + Text)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="videoUrlGroup">
+                        <label for="lessonVideoUrl">Video URL</label>
+                        <input type="url" id="lessonVideoUrl" placeholder="https://youtube.com/watch?v=...">
+                        <small>YouTube, Vimeo, or direct video URL</small>
+                    </div>
+
+                    <div class="form-group" id="contentGroup">
+                        <label for="lessonContent">Lesson Content</label>
+                        <textarea id="lessonContent" rows="12" placeholder="Enter lesson content. Basic HTML supported."></textarea>
+                        <small>Use basic HTML tags for formatting</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="lessonOrder">Order *</label>
+                        <input type="number" id="lessonOrder" min="1" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="lessonDuration">Duration (minutes)</label>
+                        <input type="number" id="lessonDuration" min="0">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="lessonAccessRule">Access Rule *</label>
+                        <select id="lessonAccessRule" required>
+                            <option value="sequential">Sequential (Must complete previous)</option>
+                            <option value="anytime">Anytime (No restrictions)</option>
+                            <option value="daily">Daily (One per day)</option>
+                            <option value="weekly">Weekly (One per week)</option>
+                            <option value="monthly">Monthly (One per month)</option>
+                        </select>
+                        <small>Control when students can access this lesson</small>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" id="cancelLessonBtn">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Lesson</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <script type="module" src="../js/firebase-config.js"></script>
     <script type="module" src="../js/auth.js"></script>
