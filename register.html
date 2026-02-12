@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Clarity Academy</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container nav-container">
+            <a href="index.html" class="logo">Clarity Academy</a>
+            <ul class="nav-links">
+                <li><a href="courses.html">Courses</a></li>
+                <li><a href="login.html">Login</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <section class="auth-section">
+        <div class="auth-container">
+            <div class="auth-card">
+                <h1>Create Account</h1>
+                <p class="auth-subtitle">Start your learning journey</p>
+
+                <div id="errorMessage" class="error-message" style="display: none;"></div>
+
+                <form id="registerForm" class="auth-form">
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <input type="email" id="email" required autocomplete="email">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" required minlength="6" autocomplete="new-password">
+                        <small>Minimum 6 characters</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="confirmPassword">Confirm Password</label>
+                        <input type="password" id="confirmPassword" required minlength="6" autocomplete="new-password">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-full" id="registerBtn">
+                        Create Account
+                    </button>
+                </form>
+
+                <div class="auth-links">
+                    <span>Already have an account? <a href="login.html">Login</a></span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script type="module" src="js/firebase-config.js"></script>
+    <script type="module" src="js/register.js"></script>
+</body>
+</html>
