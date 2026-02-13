@@ -393,6 +393,12 @@ function openModuleFormModal(moduleId = null) {
 async function handleModuleSave(e) {
     e.preventDefault();
 
+    const saveBtn = e.target.querySelector('button[type="submit"]');
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+    }
+
     const moduleData = {
         title: document.getElementById('moduleTitle').value,
         description: document.getElementById('moduleDescription').value,
@@ -408,9 +414,12 @@ async function handleModuleSave(e) {
             const moduleIndex = modules.findIndex(m => m.id === moduleId);
             if (moduleIndex !== -1) {
                 modules[moduleIndex] = { ...modules[moduleIndex], ...moduleData };
+            } else {
+                throw new Error('Module not found');
             }
         } else {
             moduleData.id = generateId('module');
+            moduleData.lessons = [];
             modules.push(moduleData);
         }
 
@@ -420,6 +429,10 @@ async function handleModuleSave(e) {
         });
 
         const courseDoc = await getDoc(doc(db, 'courses', currentEditingCourseId));
+        if (!courseDoc.exists()) {
+            throw new Error('Course not found after update');
+        }
+        
         currentEditingCourseData = { id: courseDoc.id, ...courseDoc.data() };
 
         displayModulesList(currentEditingCourseData.modules);
@@ -428,7 +441,12 @@ async function handleModuleSave(e) {
         alert('Module saved successfully!');
     } catch (error) {
         console.error('Error saving module:', error);
-        alert('Error saving module. Please try again.');
+        alert(`Failed to save module: ${error.message}\n\nPlease check:\n- Your internet connection\n- Admin permissions\n- Browser console for details`);
+    } finally {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save Module';
+        }
     }
 }
 
@@ -630,6 +648,12 @@ function toggleLessonFields(type) {
 async function handleLessonSave(e) {
     e.preventDefault();
 
+    const saveBtn = e.target.querySelector('button[type="submit"]');
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+    }
+
     const lessonType = document.getElementById('lessonType').value;
     
     const lessonData = {
@@ -652,7 +676,14 @@ async function handleLessonSave(e) {
     const modules = [...currentEditingCourseData.modules];
     const moduleIndex = modules.findIndex(m => m.id === currentEditingModuleId);
     
-    if (moduleIndex === -1) return;
+    if (moduleIndex === -1) {
+        alert('Error: Module not found');
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save Lesson';
+        }
+        return;
+    }
 
     const lessons = modules[moduleIndex].lessons || [];
 
@@ -661,6 +692,8 @@ async function handleLessonSave(e) {
             const lessonIndex = lessons.findIndex(l => l.id === lessonId);
             if (lessonIndex !== -1) {
                 lessons[lessonIndex] = { ...lessons[lessonIndex], ...lessonData };
+            } else {
+                throw new Error('Lesson not found');
             }
         } else {
             lessonData.id = generateId('lesson');
@@ -675,17 +708,29 @@ async function handleLessonSave(e) {
         });
 
         const courseDoc = await getDoc(doc(db, 'courses', currentEditingCourseId));
+        if (!courseDoc.exists()) {
+            throw new Error('Course not found after update');
+        }
+        
         currentEditingCourseData = { id: courseDoc.id, ...courseDoc.data() };
 
         const module = currentEditingCourseData.modules.find(m => m.id === currentEditingModuleId);
-        displayLessonsList(module.lessons);
+        if (!module) {
+            throw new Error('Module not found after refresh');
+        }
         
+        displayLessonsList(module.lessons);
         document.getElementById('lessonFormModal').classList.remove('active');
         loadCourses();
         alert('Lesson saved successfully!');
     } catch (error) {
         console.error('Error saving lesson:', error);
-        alert('Error saving lesson. Please try again.');
+        alert(`Failed to save lesson: ${error.message}\n\nPlease check:\n- Your internet connection\n- Admin permissions\n- Browser console for details`);
+    } finally {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save Lesson';
+        }
     }
 }
 
