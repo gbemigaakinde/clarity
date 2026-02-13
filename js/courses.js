@@ -3,19 +3,28 @@ import { collection, query, where, getDocs, orderBy } from 'https://www.gstatic.
 
 let allCourses = [];
 
-// Load all courses
 async function loadCourses() {
     const grid = document.getElementById('coursesGrid');
     
     try {
         const coursesRef = collection(db, 'courses');
-        const q = query(coursesRef, where('published', '==', true), orderBy('title'));
-        const querySnapshot = await getDocs(q);
+        let querySnapshot;
+        
+        try {
+            const q = query(coursesRef, where('published', '==', true), orderBy('title'));
+            querySnapshot = await getDocs(q);
+        } catch (indexError) {
+            console.warn('Composite index not found, falling back to simple query:', indexError);
+            const q = query(coursesRef, where('published', '==', true));
+            querySnapshot = await getDocs(q);
+        }
         
         allCourses = [];
         querySnapshot.forEach((doc) => {
             allCourses.push({ id: doc.id, ...doc.data() });
         });
+        
+        allCourses.sort((a, b) => a.title.localeCompare(b.title));
         
         displayCourses(allCourses);
     } catch (error) {
@@ -44,7 +53,6 @@ function createCourseCard(id, course) {
     card.className = 'course-card';
     card.onclick = () => window.location.href = `course-detail.html?id=${id}`;
     
-    // Calculate from modules structure
     const moduleCount = course.modules ? course.modules.length : 0;
     const lessonCount = course.modules 
         ? course.modules.reduce((sum, mod) => sum + (mod.lessons?.length || 0), 0)
@@ -89,7 +97,6 @@ function createCourseCard(id, course) {
     return card;
 }
 
-// Search and filter
 function filterCourses() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase();
     const categoryFilter = document.getElementById('categoryFilter').value;
@@ -105,7 +112,6 @@ function filterCourses() {
     displayCourses(filtered);
 }
 
-// Initialize
 document.addEventListener('DOMContentLoaded', () => {
     loadCourses();
     
