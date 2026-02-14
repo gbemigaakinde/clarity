@@ -1,5 +1,6 @@
 import { db } from './firebase-config.js';
 import { collection, query, where, getDocs, orderBy } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { transformImageUrl, handleImageError } from './image-utils.js';
 
 let allCourses = [];
 
@@ -64,8 +65,13 @@ function createCourseCard(id, course) {
         }, 0)
         : 0;
     
+    // Transform the thumbnail URL to ensure it's a direct image URL
+    const thumbnailUrl = transformImageUrl(course.thumbnail || '');
+    
     card.innerHTML = `
-        <img src="${course.thumbnail || 'https://via.placeholder.com/400x200'}" alt="${course.title}">
+        <img src="${thumbnailUrl}" 
+             alt="${course.title}"
+             onerror="this.onerror=null; this.src='https://via.placeholder.com/400x200/4F46E5/FFFFFF?text=${encodeURIComponent(course.title)}'; this.style.opacity='0.7';">
         <div class="course-card-content">
             <span class="course-category">${course.category}</span>
             <h3>${course.title}</h3>
