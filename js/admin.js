@@ -23,6 +23,76 @@ function generateId(prefix) {
     return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
+// Show success message
+function showSuccess(message) {
+    const existingMsg = document.querySelector('.success-toast');
+    if (existingMsg) existingMsg.remove();
+    
+    const toast = document.createElement('div');
+    toast.className = 'success-toast';
+    toast.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
+    toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #059669;
+        color: white;
+        padding: 1rem 1.5rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        z-index: 10000;
+        animation: slideIn 0.3s ease;
+    `;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// Show error message
+function showError(message) {
+    const existingMsg = document.querySelector('.error-toast');
+    if (existingMsg) existingMsg.remove();
+    
+    const toast = document.createElement('div');
+    toast.className = 'error-toast';
+    toast.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+    toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #dc2626;
+        color: white;
+        padding: 1rem 1.5rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        z-index: 10000;
+        animation: slideIn 0.3s ease;
+    `;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+    }, 5000);
+}
+
+// Add CSS animations
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from { transform: translateX(400px); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes slideOut {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(400px); opacity: 0; }
+    }
+`;
+document.head.appendChild(style);
+
 // Initialize admin dashboard
 async function initAdmin() {
     const hasAccess = await requireAdmin();
@@ -248,19 +318,20 @@ async function handleCourseSave(e) {
     try {
         if (currentEditingCourseId) {
             await updateDoc(doc(db, 'courses', currentEditingCourseId), courseData);
+            showSuccess('Course updated successfully!');
         } else {
             courseData.createdAt = new Date();
             courseData.modules = [];
             await addDoc(collection(db, 'courses'), courseData);
+            showSuccess('Course created successfully!');
         }
 
         document.getElementById('courseModal').classList.remove('active');
         loadCourses();
         loadStats();
-        alert('Course saved successfully!');
     } catch (error) {
         console.error('Error saving course:', error);
-        alert('Error saving course. Please try again.');
+        showError('Error saving course: ' + error.message);
     } finally {
         saveBtn.disabled = false;
         saveBtn.textContent = 'Save Course';
@@ -295,10 +366,10 @@ async function deleteCourse(courseId) {
 
         loadCourses();
         loadStats();
-        alert('Course deleted successfully!');
+        showSuccess('Course deleted successfully!');
     } catch (error) {
         console.error('Error deleting course:', error);
-        alert('Error deleting course. Please try again.');
+        showError('Error deleting course: ' + error.message);
     }
 }
 
@@ -306,29 +377,38 @@ async function deleteCourse(courseId) {
 async function manageModules(courseId) {
     currentEditingCourseId = courseId;
     
-    const course = allCourses.find(c => c.id === courseId);
-    if (!course) return;
-
-    currentEditingCourseData = course;
-    
-    document.getElementById('modulesCourseName').textContent = course.title;
-    displayModulesList(course.modules || []);
-    
-    document.getElementById('modulesModal').classList.add('active');
+    // Reload fresh data from Firestore
+    try {
+        const courseDoc = await getDoc(doc(db, 'courses', courseId));
+        if (!courseDoc.exists()) {
+            showError('Course not found');
+            return;
+        }
+        
+        currentEditingCourseData = { id: courseDoc.id, ...courseDoc.data() };
+        
+        document.getElementById('modulesCourseName').textContent = currentEditingCourseData.title;
+        displayModulesList(currentEditingCourseData.modules || []);
+        
+        document.getElementById('modulesModal').classList.add('active');
+    } catch (error) {
+        console.error('Error loading course:', error);
+        showError('Error loading course data');
+    }
 }
 
 function displayModulesList(modules) {
     const modulesList = document.getElementById('modulesList');
     
     if (modules.length === 0) {
-        modulesList.innerHTML = '<p class="loading">No modules yet. Add your first module!</p>';
+        modulesList.innerHTML = '<p class="loading">No modules yet. Click "Add Module" to create your first module!</p>';
         return;
     }
 
     const sortedModules = [...modules].sort((a, b) => a.order - b.order);
 
     modulesList.innerHTML = '';
-    sortedModules.forEach((module, moduleIndex) => {
+    sortedModules.forEach((module) => {
         const moduleItem = document.createElement('div');
         moduleItem.className = 'module-admin-item';
         moduleItem.style.cssText = 'background: #f8f9fa; padding: 1rem; margin-bottom: 1rem; border-radius: 0.5rem; border-left: 4px solid var(--primary-color);';
@@ -411,23 +491,29 @@ async function handleModuleSave(e) {
 
     try {
         if (moduleId) {
+            // Edit existing module
             const moduleIndex = modules.findIndex(m => m.id === moduleId);
             if (moduleIndex !== -1) {
+                // Preserve existing lessons when editing
+                moduleData.lessons = modules[moduleIndex].lessons || [];
                 modules[moduleIndex] = { ...modules[moduleIndex], ...moduleData };
             } else {
                 throw new Error('Module not found');
             }
         } else {
+            // Add new module
             moduleData.id = generateId('module');
             moduleData.lessons = [];
             modules.push(moduleData);
         }
 
+        // Update Firestore
         await updateDoc(doc(db, 'courses', currentEditingCourseId), {
             modules: modules,
             updatedAt: new Date()
         });
 
+        // Reload fresh data
         const courseDoc = await getDoc(doc(db, 'courses', currentEditingCourseId));
         if (!courseDoc.exists()) {
             throw new Error('Course not found after update');
@@ -438,10 +524,11 @@ async function handleModuleSave(e) {
         displayModulesList(currentEditingCourseData.modules);
         document.getElementById('moduleFormModal').classList.remove('active');
         loadCourses();
-        alert('Module saved successfully!');
+        
+        showSuccess(moduleId ? 'Module updated successfully!' : 'Module created successfully!');
     } catch (error) {
         console.error('Error saving module:', error);
-        alert(`Failed to save module: ${error.message}\n\nPlease check:\n- Your internet connection\n- Admin permissions\n- Browser console for details`);
+        showError('Failed to save module: ' + error.message);
     } finally {
         if (saveBtn) {
             saveBtn.disabled = false;
@@ -468,6 +555,7 @@ async function deleteModule(moduleId) {
         if (moduleIndex !== -1) {
             modules.splice(moduleIndex, 1);
             
+            // Reorder remaining modules
             modules.forEach((module, index) => {
                 module.order = index + 1;
             });
@@ -477,36 +565,41 @@ async function deleteModule(moduleId) {
                 updatedAt: new Date()
             });
 
+            // Reload fresh data
             const courseDoc = await getDoc(doc(db, 'courses', currentEditingCourseId));
             currentEditingCourseData = { id: courseDoc.id, ...courseDoc.data() };
 
             displayModulesList(currentEditingCourseData.modules);
             loadCourses();
-            alert('Module deleted successfully!');
+            showSuccess('Module deleted successfully!');
         }
     } catch (error) {
         console.error('Error deleting module:', error);
-        alert('Error deleting module. Please try again.');
+        showError('Error deleting module: ' + error.message);
     }
 }
 
-// Manage lessons
+// Manage lessons - IMPROVED: Opens separate lesson management modal
 function manageLessons(moduleId) {
     currentEditingModuleId = moduleId;
     const module = currentEditingCourseData.modules.find(m => m.id === moduleId);
     
-    if (!module) return;
+    if (!module) {
+        showError('Module not found');
+        return;
+    }
 
-    const modal = document.getElementById('lessonFormModal');
+    // Update the modules modal to show lesson management
     const modulesList = document.getElementById('modulesList');
     
     modulesList.innerHTML = `
-        <div style="margin-bottom: 1rem;">
-            <button class="btn btn-sm btn-secondary" onclick="window.adminPanel.backToModules()">
+        <div style="margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid var(--border-color);">
+            <button class="btn btn-sm btn-secondary" onclick="window.adminPanel.backToModules()" style="margin-bottom: 0.5rem;">
                 <i class="fas fa-arrow-left"></i> Back to Modules
             </button>
+            <h3 style="margin: 0.5rem 0 0.25rem 0;">Module ${module.order}: ${module.title}</h3>
+            <p style="margin: 0; color: var(--text-secondary); font-size: 0.875rem;">${module.description || 'Manage lessons for this module'}</p>
         </div>
-        <h4 style="margin-bottom: 1rem;">Lessons in: ${module.title}</h4>
         <button class="btn btn-primary btn-sm" style="margin-bottom: 1rem;" onclick="window.adminPanel.openLessonFormModal()">
             <i class="fas fa-plus"></i> Add Lesson
         </button>
@@ -527,7 +620,7 @@ function displayLessonsList(lessons) {
     if (!container) return;
     
     if (lessons.length === 0) {
-        container.innerHTML = '<p class="loading">No lessons yet. Add your first lesson!</p>';
+        container.innerHTML = '<p class="loading">No lessons yet. Click "Add Lesson" to create your first lesson!</p>';
         return;
     }
 
@@ -586,7 +679,10 @@ function openLessonFormModal(lessonId = null) {
     form.reset();
 
     const module = currentEditingCourseData.modules.find(m => m.id === currentEditingModuleId);
-    if (!module) return;
+    if (!module) {
+        showError('Module not found');
+        return;
+    }
 
     if (lessonId) {
         modalTitle.textContent = 'Edit Lesson';
@@ -677,7 +773,7 @@ async function handleLessonSave(e) {
     const moduleIndex = modules.findIndex(m => m.id === currentEditingModuleId);
     
     if (moduleIndex === -1) {
-        alert('Error: Module not found');
+        showError('Module not found');
         if (saveBtn) {
             saveBtn.disabled = false;
             saveBtn.textContent = 'Save Lesson';
@@ -689,6 +785,7 @@ async function handleLessonSave(e) {
 
     try {
         if (lessonId) {
+            // Edit existing lesson
             const lessonIndex = lessons.findIndex(l => l.id === lessonId);
             if (lessonIndex !== -1) {
                 lessons[lessonIndex] = { ...lessons[lessonIndex], ...lessonData };
@@ -696,17 +793,20 @@ async function handleLessonSave(e) {
                 throw new Error('Lesson not found');
             }
         } else {
+            // Add new lesson
             lessonData.id = generateId('lesson');
             lessons.push(lessonData);
         }
 
         modules[moduleIndex].lessons = lessons;
 
+        // Update Firestore
         await updateDoc(doc(db, 'courses', currentEditingCourseId), {
             modules: modules,
             updatedAt: new Date()
         });
 
+        // Reload fresh data
         const courseDoc = await getDoc(doc(db, 'courses', currentEditingCourseId));
         if (!courseDoc.exists()) {
             throw new Error('Course not found after update');
@@ -722,10 +822,11 @@ async function handleLessonSave(e) {
         displayLessonsList(module.lessons);
         document.getElementById('lessonFormModal').classList.remove('active');
         loadCourses();
-        alert('Lesson saved successfully!');
+        
+        showSuccess(lessonId ? 'Lesson updated successfully!' : 'Lesson created successfully!');
     } catch (error) {
         console.error('Error saving lesson:', error);
-        alert(`Failed to save lesson: ${error.message}\n\nPlease check:\n- Your internet connection\n- Admin permissions\n- Browser console for details`);
+        showError('Failed to save lesson: ' + error.message);
     } finally {
         if (saveBtn) {
             saveBtn.disabled = false;
@@ -749,7 +850,10 @@ async function deleteLesson(lessonId) {
         const modules = [...currentEditingCourseData.modules];
         const moduleIndex = modules.findIndex(m => m.id === currentEditingModuleId);
         
-        if (moduleIndex === -1) return;
+        if (moduleIndex === -1) {
+            showError('Module not found');
+            return;
+        }
 
         const lessons = modules[moduleIndex].lessons || [];
         const lessonIndex = lessons.findIndex(l => l.id === lessonId);
@@ -757,6 +861,7 @@ async function deleteLesson(lessonId) {
         if (lessonIndex !== -1) {
             lessons.splice(lessonIndex, 1);
             
+            // Reorder remaining lessons
             lessons.forEach((lesson, index) => {
                 lesson.order = index + 1;
             });
@@ -768,17 +873,18 @@ async function deleteLesson(lessonId) {
                 updatedAt: new Date()
             });
 
+            // Reload fresh data
             const courseDoc = await getDoc(doc(db, 'courses', currentEditingCourseId));
             currentEditingCourseData = { id: courseDoc.id, ...courseDoc.data() };
 
             const module = currentEditingCourseData.modules.find(m => m.id === currentEditingModuleId);
             displayLessonsList(module.lessons);
             loadCourses();
-            alert('Lesson deleted successfully!');
+            showSuccess('Lesson deleted successfully!');
         }
     } catch (error) {
         console.error('Error deleting lesson:', error);
-        alert('Error deleting lesson. Please try again.');
+        showError('Error deleting lesson: ' + error.message);
     }
 }
 
