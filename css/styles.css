@@ -1772,11 +1772,12 @@ body {
 
     /* Make sure lessons are clickable on mobile */
     .sidebar-lesson {
-        /* Ensure proper touch target size */
         min-height: 48px;
         touch-action: manipulation;
         user-select: none;
-        -webkit-tap-highlight-color: transparent;
+       -webkit-tap-highlight-color: transparent;
+        pointer-events: auto; /* CRITICAL: Explicitly set this */
+        cursor: pointer;
     }
 
     .sidebar-lesson:active {
@@ -1787,8 +1788,7 @@ body {
         background: var(--accent-hover);
     }
 
-    /* Prevent text selection during touch */
-    .sidebar-lesson * {
+    .sidebar-lesson .lesson-title-wrapper {
         pointer-events: none;
     }
 
