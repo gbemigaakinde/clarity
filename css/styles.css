@@ -1345,10 +1345,13 @@ body {
     z-index: 999;
     opacity: 0;
     transition: opacity var(--transition-base);
+    pointer-events: none !important; /* CRITICAL: Don't block clicks when inactive */
 }
 
 .mobile-sidebar-overlay.active {
+    display: block; /* CRITICAL: Only visible when active */
     opacity: 1;
+    pointer-events: auto !important; /* CRITICAL: Only accept clicks when active */
 }
 
 /* Admin */
@@ -1775,8 +1778,8 @@ body {
         min-height: 48px;
         touch-action: manipulation;
         user-select: none;
-       -webkit-tap-highlight-color: transparent;
-        pointer-events: auto; /* CRITICAL: Explicitly set this */
+        -webkit-tap-highlight-color: transparent;
+        pointer-events: auto !important; /* CRITICAL: Explicitly enable */
         cursor: pointer;
     }
 
@@ -1788,6 +1791,7 @@ body {
         background: var(--accent-hover);
     }
 
+    /* Only disable pointer events on text wrapper, NOT everything */
     .sidebar-lesson .lesson-title-wrapper {
         pointer-events: none;
     }
@@ -1916,4 +1920,26 @@ body {
     .mobile-sidebar-overlay {
         display: none;
     }
+}
+
+/* CRITICAL: Ensure buttons always work */
+.btn {
+    position: relative;
+    z-index: 10;
+    pointer-events: auto !important;
+}
+
+.lesson-footer {
+    position: relative;
+    z-index: 5;
+}
+
+.lesson-header {
+    position: relative;
+    z-index: 5;
+}
+
+.lesson-main {
+    position: relative;
+    z-index: 1;
 }
