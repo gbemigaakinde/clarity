@@ -1,6 +1,7 @@
 import { auth, db } from './firebase-config.js';
 import { doc, getDoc, collection, addDoc, query, where, getDocs } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+import { transformImageUrl } from './image-utils.js';
 
 let courseId = null;
 let courseData = null;
@@ -118,6 +119,9 @@ function displayCourseDetails() {
         }).join('')
         : '<li class="curriculum-item"><p>No modules or lessons available yet.</p></li>';
 
+    // Transform the thumbnail URL
+    const thumbnailUrl = transformImageUrl(courseData.thumbnail || '');
+
     contentDiv.innerHTML = `
         <section class="course-detail-header">
             <div class="container">
@@ -163,7 +167,10 @@ function displayCourseDetails() {
 
                     <div class="course-sidebar">
                         ${isEnrolled ? '<span class="enrolled-badge"><i class="fas fa-check-circle"></i> Enrolled</span>' : ''}
-                        <img src="${courseData.thumbnail || 'https://via.placeholder.com/400x300'}" alt="${courseData.title}" style="width: 100%; border-radius: 0.5rem; margin-bottom: 1rem;">
+                        <img src="${thumbnailUrl}" 
+                             alt="${courseData.title}" 
+                             style="width: 100%; border-radius: 0.5rem; margin-bottom: 1rem;"
+                             onerror="this.onerror=null; this.src='https://via.placeholder.com/400x300/4F46E5/FFFFFF?text=${encodeURIComponent(courseData.title)}'; this.style.opacity='0.7';">
                         <h3 style="margin-bottom: 0.5rem;">$${courseData.price}</h3>
                         ${enrollButton}
                         
@@ -184,7 +191,7 @@ function displayCourseDetails() {
                                 </li>` : ''}
                                 <li style="margin-bottom: 0.5rem;">
                                     <i class="fas fa-mobile-alt"></i>
-                                    Access on mobile and desktop
+                    Access on mobile and desktop
                                 </li>
                                 <li style="margin-bottom: 0.5rem;">
                                     <i class="fas fa-infinity"></i>
