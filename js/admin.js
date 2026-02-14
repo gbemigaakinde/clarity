@@ -12,6 +12,7 @@ import {
     orderBy 
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { requireAdmin } from './auth.js';
+import { transformImageUrl, validateImageUrl } from './image-utils.js';
 
 let allCourses = [];
 let currentEditingCourseId = null;
@@ -89,6 +90,31 @@ style.textContent = `
     @keyframes slideOut {
         from { transform: translateX(0); opacity: 1; }
         to { transform: translateX(400px); opacity: 0; }
+    }
+    .image-preview {
+        max-width: 200px;
+        max-height: 150px;
+        margin-top: 0.5rem;
+        border-radius: 0.5rem;
+        border: 2px solid var(--border-color);
+    }
+    .image-validation-status {
+        margin-top: 0.5rem;
+        padding: 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.875rem;
+    }
+    .image-validation-status.success {
+        background: #d1fae5;
+        color: #065f46;
+    }
+    .image-validation-status.error {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+    .image-validation-status.loading {
+        background: #dbeafe;
+        color: #1e40af;
     }
 `;
 document.head.appendChild(style);
@@ -168,8 +194,13 @@ function createAdminCourseCard(course) {
     const status = course.published ? 'Published' : 'Draft';
     const statusColor = course.published ? 'var(--success-color)' : 'var(--text-secondary)';
 
+    // Transform the thumbnail URL
+    const thumbnailUrl = transformImageUrl(course.thumbnail || '');
+
     card.innerHTML = `
-        <img src="${course.thumbnail || 'https://via.placeholder.com/400x200'}" alt="${course.title}">
+        <img src="${thumbnailUrl}" 
+             alt="${course.title}"
+             onerror="this.onerror=null; this.src='https://via.placeholder.com/400x200/4F46E5/FFFFFF?text=${encodeURIComponent(course.title)}'; this.style.opacity='0.7';">
         <div class="course-card-content">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                 <span class="course-category">${course.category}</span>
@@ -254,6 +285,83 @@ function setupModals() {
     document.getElementById('lessonType').addEventListener('change', (e) => {
         toggleLessonFields(e.target.value);
     });
+
+    // Add thumbnail URL validation
+    const thumbnailInput = document.getElementById('courseThumbnail');
+    if (thumbnailInput) {
+        thumbnailInput.addEventListener('blur', validateThumbnailUrl);
+        thumbnailInput.addEventListener('input', debounce(validateThumbnailUrl, 500));
+    }
+}
+
+// Debounce helper
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Validate thumbnail URL
+async function validateThumbnailUrl() {
+    const thumbnailInput = document.getElementById('courseThumbnail');
+    const url = thumbnailInput.value.trim();
+    
+    // Remove any existing preview or status
+    const existingPreview = document.getElementById('thumbnailPreview');
+    const existingStatus = document.getElementById('thumbnailStatus');
+    if (existingPreview) existingPreview.remove();
+    if (existingStatus) existingStatus.remove();
+    
+    if (!url) {
+        return;
+    }
+    
+    // Show loading status
+    const statusDiv = document.createElement('div');
+    statusDiv.id = 'thumbnailStatus';
+    statusDiv.className = 'image-validation-status loading';
+    statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Validating image URL...';
+    thumbnailInput.parentNode.appendChild(statusDiv);
+    
+    try {
+        // Transform the URL
+        const transformedUrl = transformImageUrl(url);
+        
+        // Update input with transformed URL if different
+        if (transformedUrl !== url) {
+            thumbnailInput.value = transformedUrl;
+            statusDiv.className = 'image-validation-status success';
+            statusDiv.innerHTML = '<i class="fas fa-info-circle"></i> URL was transformed to direct image URL';
+        }
+        
+        // Validate the image loads
+        const isValid = await validateImageUrl(transformedUrl);
+        
+        if (isValid) {
+            statusDiv.className = 'image-validation-status success';
+            statusDiv.innerHTML = '<i class="fas fa-check-circle"></i> Image URL is valid';
+            
+            // Show preview
+            const previewImg = document.createElement('img');
+            previewImg.id = 'thumbnailPreview';
+            previewImg.className = 'image-preview';
+            previewImg.src = transformedUrl;
+            previewImg.alt = 'Thumbnail preview';
+            thumbnailInput.parentNode.appendChild(previewImg);
+        } else {
+            statusDiv.className = 'image-validation-status error';
+            statusDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> Unable to load image from this URL. Please check the URL or use a direct image link.';
+        }
+    } catch (error) {
+        statusDiv.className = 'image-validation-status error';
+        statusDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> Invalid URL format';
+    }
 }
 
 // Open course modal
@@ -264,6 +372,12 @@ function openCourseModal(courseId = null) {
 
     form.reset();
     currentEditingCourseId = courseId;
+
+    // Clean up any validation UI
+    const existingPreview = document.getElementById('thumbnailPreview');
+    const existingStatus = document.getElementById('thumbnailStatus');
+    if (existingPreview) existingPreview.remove();
+    if (existingStatus) existingStatus.remove();
 
     if (courseId) {
         modalTitle.textContent = 'Edit Course';
@@ -280,6 +394,11 @@ function openCourseModal(courseId = null) {
             document.getElementById('courseAccessType').value = course.accessConfig?.type || 'sequential';
             document.getElementById('courseAllowSkip').checked = course.accessConfig?.allowSkip || false;
             document.getElementById('courseId').value = courseId;
+            
+            // Trigger validation for existing thumbnail
+            if (course.thumbnail) {
+                setTimeout(() => validateThumbnailUrl(), 100);
+            }
         }
     } else {
         modalTitle.textContent = 'Create Course';
@@ -299,13 +418,18 @@ async function handleCourseSave(e) {
     saveBtn.disabled = true;
     saveBtn.textContent = 'Saving...';
 
+    // Transform the thumbnail URL before saving
+    const thumbnailInput = document.getElementById('courseThumbnail');
+    const originalUrl = thumbnailInput.value.trim();
+    const transformedUrl = transformImageUrl(originalUrl);
+
     const courseData = {
         title: document.getElementById('courseTitle').value,
         slug: document.getElementById('courseSlug').value,
         description: document.getElementById('courseDescription').value,
         category: document.getElementById('courseCategory').value,
         instructor: document.getElementById('courseInstructor').value,
-        thumbnail: document.getElementById('courseThumbnail').value,
+        thumbnail: transformedUrl, // Use transformed URL
         price: parseFloat(document.getElementById('coursePrice').value),
         published: document.getElementById('coursePublished').checked,
         accessConfig: {
