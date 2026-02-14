@@ -33,7 +33,7 @@ async function initLessonViewer() {
         await determineCurrentLesson();
         renderLessonViewer();
         setupMobileSidebar();
-        setupEventListeners(); // NEW: Consolidated event listener setup
+        setupEventListeners();
     } catch (error) {
         console.error('Error initializing lesson viewer:', error);
         showError('Failed to load lesson. Please try again.');
@@ -100,7 +100,6 @@ async function loadProgressData() {
             console.log('Progress data loaded:', progressData);
         } else {
             console.log('No progress found, creating new progress record');
-            // Create initial progress if doesn't exist
             await createInitialProgress();
         }
     } catch (error) {
@@ -145,7 +144,6 @@ async function createInitialProgress() {
 // Determine current lesson to show
 async function determineCurrentLesson() {
     try {
-        // First, try to use progress data
         if (progressData && progressData.currentModule && progressData.currentLesson) {
             const module = courseData.modules.find(m => m.id === progressData.currentModule);
             const lesson = module?.lessons?.find(l => l.id === progressData.currentLesson);
@@ -158,7 +156,6 @@ async function determineCurrentLesson() {
             }
         }
         
-        // Fallback: Use first available lesson
         const sortedModules = courseData.modules.sort((a, b) => a.order - b.order);
         const firstModule = sortedModules[0];
         
@@ -176,7 +173,6 @@ async function determineCurrentLesson() {
         currentModuleId = firstModule.id;
         currentLessonId = firstLesson.id;
         
-        // Update progress to reflect this
         await updateDoc(doc(db, 'progress', progressData.id), {
             currentModule: currentModuleId,
             currentLesson: currentLessonId,
@@ -200,29 +196,23 @@ function isLessonAccessible(moduleId, lessonId) {
 
     const accessRule = lesson.accessRule || courseData.accessConfig?.type || 'sequential';
     
-    // Anytime access
     if (accessRule === 'anytime' || courseData.accessConfig?.allowSkip) {
         return true;
     }
 
-    // Sequential access - check if previous lesson is completed
     if (accessRule === 'sequential') {
         const lessonOrder = lesson.order;
         
-        // First lesson is always accessible
         if (lessonOrder === 1) {
-            // Check if it's the first lesson in the first module
             const moduleOrder = module.order;
             if (moduleOrder === 1) return true;
             
-            // Check if previous module is completed
             const previousModule = courseData.modules.find(m => m.order === moduleOrder - 1);
             if (previousModule) {
                 return progressData.completedModules?.includes(previousModule.id);
             }
         }
         
-        // Check if previous lesson in same module is completed
         const previousLesson = module.lessons.find(l => l.order === lessonOrder - 1);
         if (previousLesson) {
             const moduleCompletedLessons = progressData.completedLessons?.[moduleId] || [];
@@ -230,10 +220,9 @@ function isLessonAccessible(moduleId, lessonId) {
         }
     }
 
-    // Time-based access (daily, weekly, monthly)
     if (['daily', 'weekly', 'monthly'].includes(accessRule)) {
         const lastAccess = progressData.accessHistory?.find(h => h.lessonId === lessonId);
-        if (!lastAccess) return true; // First time access
+        if (!lastAccess) return true;
         
         const lastAccessDate = lastAccess.accessedAt.toDate();
         const now = new Date();
@@ -252,53 +241,53 @@ function isLessonAccessible(moduleId, lessonId) {
 
 // Setup mobile sidebar toggle - FIXED VERSION
 function setupMobileSidebar() {
-    // Remove any existing elements first
     const existingToggle = document.querySelector('.mobile-sidebar-toggle');
     const existingOverlay = document.querySelector('.mobile-sidebar-overlay');
     if (existingToggle) existingToggle.remove();
     if (existingOverlay) existingOverlay.remove();
 
-    // Create toggle button
     const toggleBtn = document.createElement('button');
     toggleBtn.className = 'mobile-sidebar-toggle';
     toggleBtn.innerHTML = '<i class="fas fa-list"></i>';
     toggleBtn.setAttribute('aria-label', 'Toggle lesson list');
     document.body.appendChild(toggleBtn);
 
-    // Create overlay
     const overlay = document.createElement('div');
     overlay.className = 'mobile-sidebar-overlay';
+    overlay.style.display = 'none'; // CRITICAL: Start hidden
+    overlay.style.pointerEvents = 'none'; // CRITICAL: Don't block clicks
     document.body.appendChild(overlay);
 
     const sidebar = document.querySelector('.lesson-sidebar');
 
-    // Toggle sidebar function
+    // Toggle sidebar function - FIXED
     const toggleSidebar = (show) => {
         if (show) {
             sidebar.classList.add('mobile-open');
             overlay.classList.add('active');
+            overlay.style.display = 'block'; // CRITICAL: Show
+            overlay.style.pointerEvents = 'auto'; // CRITICAL: Accept clicks
             document.body.style.overflow = 'hidden';
         } else {
             sidebar.classList.remove('mobile-open');
             overlay.classList.remove('active');
+            overlay.style.display = 'none'; // CRITICAL: Hide completely
+            overlay.style.pointerEvents = 'none'; // CRITICAL: Don't block
             document.body.style.overflow = '';
         }
     };
 
-    // Toggle button click - FIXED: No stopPropagation
     toggleBtn.addEventListener('click', (e) => {
         e.preventDefault();
         const isOpen = sidebar.classList.contains('mobile-open');
         toggleSidebar(!isOpen);
     });
 
-    // Overlay click to close - FIXED: No stopPropagation
     overlay.addEventListener('click', (e) => {
         e.preventDefault();
         toggleSidebar(false);
     });
 
-    // Close sidebar when lesson is clicked on mobile
     sidebar.addEventListener('click', (e) => {
         const lessonElement = e.target.closest('.sidebar-lesson');
         if (lessonElement && !lessonElement.classList.contains('locked')) {
@@ -310,15 +299,12 @@ function setupMobileSidebar() {
         }
     });
 
-    // Handle window resize
     let resizeTimer;
     window.addEventListener('resize', () => {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(() => {
             if (window.innerWidth > 768) {
-                sidebar.classList.remove('mobile-open');
-                overlay.classList.remove('active');
-                document.body.style.overflow = '';
+                toggleSidebar(false);
             }
         }, 250);
     });
@@ -334,7 +320,6 @@ function renderLessonViewer() {
         return;
     }
 
-    // Check accessibility
     const accessible = isLessonAccessible(currentModuleId, currentLessonId);
     
     document.body.innerHTML = `
@@ -368,9 +353,8 @@ function renderLessonViewer() {
 
     renderSidebar();
     setupMobileSidebar();
-    setupEventListeners(); // Re-setup event listeners after render
+    setupEventListeners();
     
-    // Update access history
     if (accessible) {
         updateAccessHistory(currentLessonId);
     }
@@ -437,7 +421,7 @@ function renderLockedContent(lesson) {
     `;
 }
 
-// Render sidebar - FIXED VERSION
+// Render sidebar
 function renderSidebar() {
     const sidebarContent = document.getElementById('lessonSidebarContent');
     if (!sidebarContent) return;
@@ -490,7 +474,6 @@ function renderSidebar() {
     
     sidebarContent.innerHTML = html;
     
-    // Attach click handlers using event delegation - FIXED
     const lessons = sidebarContent.querySelectorAll('.sidebar-lesson');
     lessons.forEach(lessonElement => {
         lessonElement.addEventListener('click', (e) => {
@@ -513,7 +496,6 @@ function navigateToLesson(moduleId, lessonId) {
     currentLessonId = lessonId;
     renderLessonViewer();
     
-    // Scroll to top of lesson content on mobile
     if (window.innerWidth <= 768) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -527,13 +509,11 @@ function getNextLesson() {
     const currentLesson = currentModule.lessons.find(l => l.id === currentLessonId);
     if (!currentLesson) return { nextModule: null, nextLesson: null };
 
-    // Try next lesson in same module
     const nextLessonInModule = currentModule.lessons.find(l => l.order === currentLesson.order + 1);
     if (nextLessonInModule) {
         return { nextModule: currentModule, nextLesson: nextLessonInModule };
     }
 
-    // Try first lesson in next module
     const nextModule = courseData.modules.find(m => m.order === currentModule.order + 1);
     if (nextModule && nextModule.lessons?.length > 0) {
         const firstLesson = nextModule.lessons.sort((a, b) => a.order - b.order)[0];
@@ -554,7 +534,6 @@ async function markLessonComplete() {
             completedLessons[currentModuleId] = moduleCompletedLessons;
         }
 
-        // Check if module is completed
         const currentModule = courseData.modules.find(m => m.id === currentModuleId);
         const allLessonsCompleted = currentModule.lessons.every(l => 
             moduleCompletedLessons.includes(l.id)
@@ -563,15 +542,11 @@ async function markLessonComplete() {
         const completedModules = progressData.completedModules || [];
         if (allLessonsCompleted && !completedModules.includes(currentModuleId)) {
             completedModules.push(currentModuleId);
-            
-            // Show module completion alert
             alert(`🎉 Congratulations! You've completed Module ${currentModule.order}: ${currentModule.title}`);
         }
 
-        // Get next lesson
         const { nextModule, nextLesson } = getNextLesson();
 
-        // Update progress
         await updateDoc(doc(db, 'progress', progressData.id), {
             completedLessons: completedLessons,
             completedModules: completedModules,
@@ -583,12 +558,10 @@ async function markLessonComplete() {
         progressData.completedLessons = completedLessons;
         progressData.completedModules = completedModules;
 
-        // Check if course is completed
         const allModulesCompleted = courseData.modules.every(m => completedModules.includes(m.id));
         if (allModulesCompleted) {
             alert(`🏆 Amazing! You've completed the entire course: ${courseData.title}!`);
         } else if (nextLesson) {
-            // Move to next lesson
             const moveToNext = confirm(`Lesson completed! Move to next lesson: ${nextLesson.title}?`);
             if (moveToNext) {
                 currentModuleId = nextModule.id;
@@ -646,33 +619,48 @@ function convertToEmbedUrl(url) {
     return url;
 }
 
-// NEW: Consolidated event listener setup
+// Setup event listeners - FIXED
 function setupEventListeners() {
+    console.log('Setting up event listeners...');
+    
     // Logout link
     const logoutLink = document.getElementById('logoutLink');
     if (logoutLink) {
         logoutLink.addEventListener('click', (e) => {
             e.preventDefault();
+            console.log('Logout clicked');
             auth.signOut().then(() => {
                 window.location.href = 'index.html';
             });
         });
     }
 
-    // Complete button
+    // Complete button - CRITICAL FIX
     const completeBtn = document.getElementById('completeBtn');
     if (completeBtn) {
+        console.log('Complete button found, attaching listener');
         completeBtn.addEventListener('click', (e) => {
             e.preventDefault();
+            console.log('Complete button clicked!');
             markLessonComplete();
         });
+        // Also add direct onclick as fallback
+        completeBtn.onclick = (e) => {
+            e.preventDefault();
+            console.log('Complete button onclick!');
+            markLessonComplete();
+        };
+    } else {
+        console.warn('Complete button NOT found');
     }
 
-    // Next button
+    // Next button - CRITICAL FIX
     const nextBtn = document.getElementById('nextBtn');
     if (nextBtn) {
+        console.log('Next button found, attaching listener');
         nextBtn.addEventListener('click', (e) => {
             e.preventDefault();
+            console.log('Next button clicked!');
             const { nextModule, nextLesson } = getNextLesson();
             if (nextModule && nextLesson) {
                 currentModuleId = nextModule.id;
@@ -680,6 +668,19 @@ function setupEventListeners() {
                 renderLessonViewer();
             }
         });
+        // Also add direct onclick as fallback
+        nextBtn.onclick = (e) => {
+            e.preventDefault();
+            console.log('Next button onclick!');
+            const { nextModule, nextLesson } = getNextLesson();
+            if (nextModule && nextLesson) {
+                currentModuleId = nextModule.id;
+                currentLessonId = nextLesson.id;
+                renderLessonViewer();
+            }
+        };
+    } else {
+        console.log('Next button NOT found (may not exist on last lesson)');
     }
 }
 
