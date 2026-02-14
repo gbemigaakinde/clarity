@@ -1079,6 +1079,18 @@ body {
     background: var(--bg-secondary);
 }
 
+.sidebar-lesson.completed {
+    opacity: 0.8;
+}
+
+.sidebar-lesson.completed:not(.active) {
+    background: var(--success-light);
+}
+
+.sidebar-lesson.completed:not(.active):hover {
+    background: #a7f3d0;
+}
+
 /* Lesson Main Content */
 .lesson-main {
     padding: var(--space-8);
@@ -1292,6 +1304,51 @@ body {
 .lesson-locked p {
     color: var(--text-secondary);
     font-size: 1.0625rem;
+}
+
+/* Mobile Sidebar Toggle Button */
+.mobile-sidebar-toggle {
+    display: none;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    box-shadow: var(--shadow-lg);
+    cursor: pointer;
+    z-index: 999;
+    font-size: 1.25rem;
+    transition: all var(--transition-base);
+}
+
+.mobile-sidebar-toggle:hover {
+    background: var(--accent-hover);
+    transform: scale(1.05);
+}
+
+.mobile-sidebar-toggle:active {
+    transform: scale(0.95);
+}
+
+.mobile-sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 998;
+    opacity: 0;
+    transition: opacity var(--transition-base);
+}
+
+.mobile-sidebar-overlay.active {
+    opacity: 1;
 }
 
 /* Admin */
@@ -1682,16 +1739,45 @@ body {
         gap: var(--space-6);
     }
 
+    /* MOBILE SIDEBAR FIX - Main changes here */
     .lesson-container {
         grid-template-columns: 1fr;
+        position: relative;
     }
 
     .lesson-sidebar {
-        display: none;
+        position: fixed;
+        left: -100%;
+        top: 70px;
+        width: 85%;
+        max-width: 350px;
+        height: calc(100vh - 70px);
+        z-index: 997;
+        transition: left var(--transition-base);
+        box-shadow: var(--shadow-xl);
+    }
+
+    .lesson-sidebar.mobile-open {
+        left: 0;
+    }
+
+    .mobile-sidebar-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .mobile-sidebar-overlay {
+        display: block;
+    }
+
+    .mobile-sidebar-overlay.active {
+        display: block;
     }
 
     .lesson-main {
         padding: var(--space-5);
+        width: 100%;
     }
 
     .courses-filters {
@@ -1770,6 +1856,14 @@ body {
     .btn {
         width: 100%;
     }
+
+    .mobile-sidebar-toggle {
+        width: 50px;
+        height: 50px;
+        font-size: 1.1rem;
+        bottom: 16px;
+        right: 16px;
+    }
 }
 
 /* Print Styles */
@@ -1777,7 +1871,9 @@ body {
     .navbar,
     .footer,
     .btn,
-    .modal {
+    .modal,
+    .mobile-sidebar-toggle,
+    .mobile-sidebar-overlay {
         display: none;
     }
 }
