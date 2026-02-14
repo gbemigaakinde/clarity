@@ -32,6 +32,7 @@ async function initLessonViewer() {
         await loadProgressData();
         await determineCurrentLesson();
         renderLessonViewer();
+        setupMobileSidebar();
     } catch (error) {
         console.error('Error initializing lesson viewer:', error);
         showError('Failed to load lesson. Please try again.');
@@ -52,7 +53,7 @@ function showError(message) {
             </div>
         </nav>
         <div class="container" style="padding: 3rem 0; text-align: center;">
-            <i class="fas fa-exclamation-circle" style="font-size: 4rem; color: var(--danger-color); margin-bottom: 1rem;"></i>
+            <i class="fas fa-exclamation-circle" style="font-size: 4rem; color: var(--error); margin-bottom: 1rem;"></i>
             <h2>Error Loading Lesson</h2>
             <p style="color: var(--text-secondary); margin-bottom: 2rem;">${message}</p>
             <a href="courses.html" class="btn btn-primary">Back to Courses</a>
@@ -248,6 +249,54 @@ function isLessonAccessible(moduleId, lessonId) {
     return true;
 }
 
+// Setup mobile sidebar toggle
+function setupMobileSidebar() {
+    // Create toggle button
+    const toggleBtn = document.createElement('button');
+    toggleBtn.className = 'mobile-sidebar-toggle';
+    toggleBtn.innerHTML = '<i class="fas fa-list"></i>';
+    toggleBtn.setAttribute('aria-label', 'Toggle lesson list');
+    document.body.appendChild(toggleBtn);
+
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'mobile-sidebar-overlay';
+    document.body.appendChild(overlay);
+
+    const sidebar = document.querySelector('.lesson-sidebar');
+
+    // Toggle sidebar
+    const toggleSidebar = (show) => {
+        if (show) {
+            sidebar.classList.add('mobile-open');
+            overlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        } else {
+            sidebar.classList.remove('mobile-open');
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    };
+
+    toggleBtn.addEventListener('click', () => {
+        const isOpen = sidebar.classList.contains('mobile-open');
+        toggleSidebar(!isOpen);
+    });
+
+    overlay.addEventListener('click', () => {
+        toggleSidebar(false);
+    });
+
+    // Close sidebar when lesson is clicked on mobile
+    sidebar.addEventListener('click', (e) => {
+        if (e.target.closest('.sidebar-lesson') && !e.target.closest('.sidebar-lesson').classList.contains('locked')) {
+            if (window.innerWidth <= 768) {
+                toggleSidebar(false);
+            }
+        }
+    });
+}
+
 // Render lesson viewer
 function renderLessonViewer() {
     const module = courseData.modules.find(m => m.id === currentModuleId);
@@ -291,6 +340,7 @@ function renderLessonViewer() {
     `;
 
     renderSidebar();
+    setupMobileSidebar();
     
     // Re-attach auth listener
     const logoutLink = document.getElementById('logoutLink');
@@ -387,15 +437,21 @@ function renderSidebar() {
             const isCompleted = (progressData.completedLessons?.[module.id] || []).includes(lesson.id);
             const accessible = isLessonAccessible(module.id, lesson.id);
             
+            // Determine CSS classes
+            let cssClasses = 'sidebar-lesson';
+            if (isCurrentLesson) cssClasses += ' active';
+            if (isCompleted) cssClasses += ' completed';
+            if (!accessible) cssClasses += ' locked';
+            
             return `
-                <div class="sidebar-lesson ${isCurrentLesson ? 'active' : ''} ${!accessible ? 'locked' : ''}" 
+                <div class="${cssClasses}" 
                      onclick="${accessible ? `window.lessonViewer.navigateToLesson('${module.id}', '${lesson.id}')` : ''}">
                     <div>
                         <span style="font-size: 0.875rem;">${lesson.order}. ${lesson.title}</span>
                         ${lesson.duration ? `<span style="font-size: 0.75rem; color: var(--text-secondary); display: block;">${lesson.duration} min</span>` : ''}
                     </div>
                     <i class="fas ${isCompleted ? 'fa-check-circle' : (accessible ? 'fa-circle' : 'fa-lock')}" 
-                       style="color: ${isCompleted ? 'var(--success-color)' : 'var(--text-secondary)'};"></i>
+                       style="color: ${isCompleted ? 'var(--success)' : 'var(--text-secondary)'};"></i>
                 </div>
             `;
         }).join('');
@@ -407,7 +463,7 @@ function renderSidebar() {
                         <i class="fas fa-layer-group"></i>
                         Module ${module.order}: ${module.title}
                     </h4>
-                    ${moduleCompleted ? '<i class="fas fa-check-circle" style="color: var(--success-color);"></i>' : ''}
+                    ${moduleCompleted ? '<i class="fas fa-check-circle" style="color: var(--success);"></i>' : ''}
                 </div>
                 ${lessonsHTML}
             </div>
