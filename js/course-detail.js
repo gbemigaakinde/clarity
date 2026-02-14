@@ -30,7 +30,7 @@ async function loadCourseDetails() {
             return;
         }
 
-        courseData = courseDoc.data();
+        courseData = { id: courseDoc.id, ...courseDoc.data() };
 
         // Check if user is enrolled
         if (auth.currentUser) {
@@ -216,6 +216,7 @@ async function handleEnrollment() {
     enrollBtn.textContent = 'Enrolling...';
 
     try {
+        // Create enrollment record
         await addDoc(collection(db, 'enrollments'), {
             userId: auth.currentUser.uid,
             courseId: courseId,
@@ -224,27 +225,49 @@ async function handleEnrollment() {
             completedLessons: []
         });
 
-        // Get first module and lesson
-        const firstModule = courseData.modules?.sort((a, b) => a.order - b.order)[0];
-        const firstLesson = firstModule?.lessons?.sort((a, b) => a.order - b.order)[0];
+        // Ensure course has modules and lessons
+        if (!courseData.modules || courseData.modules.length === 0) {
+            throw new Error('This course has no content yet');
+        }
 
+        // Get first module and lesson
+        const sortedModules = courseData.modules.sort((a, b) => a.order - b.order);
+        const firstModule = sortedModules[0];
+        
+        if (!firstModule) {
+            throw new Error('No modules found');
+        }
+
+        const sortedLessons = (firstModule.lessons || []).sort((a, b) => a.order - b.order);
+        const firstLesson = sortedLessons[0];
+        
+        if (!firstLesson) {
+            throw new Error('No lessons found in first module');
+        }
+
+        // Create initial progress record
         await addDoc(collection(db, 'progress'), {
             userId: auth.currentUser.uid,
             courseId: courseId,
             completedModules: [],
             completedLessons: {},
-            currentModule: firstModule?.id || null,
-            currentLesson: firstLesson?.id || null,
+            currentModule: firstModule.id,
+            currentLesson: firstLesson.id,
             lastAccessedAt: new Date(),
             accessHistory: [],
             updatedAt: new Date()
         });
 
+        console.log('Enrollment successful. Redirecting to lesson page...');
         alert('Successfully enrolled! Redirecting to course...');
-        window.location.href = `lesson.html?courseId=${courseId}`;
+        
+        // Small delay to ensure Firestore writes are complete
+        setTimeout(() => {
+            window.location.href = `lesson.html?courseId=${courseId}`;
+        }, 500);
     } catch (error) {
         console.error('Error enrolling:', error);
-        alert('Error enrolling in course. Please try again.');
+        alert('Error enrolling in course: ' + error.message);
         enrollBtn.disabled = false;
         enrollBtn.textContent = `Enroll Now - $${courseData.price}`;
     }
