@@ -1320,7 +1320,7 @@ body {
     border-radius: 50%;
     box-shadow: var(--shadow-lg);
     cursor: pointer;
-    z-index: 999;
+    z-index: 1001;
     font-size: 1.25rem;
     transition: all var(--transition-base);
 }
@@ -1342,7 +1342,7 @@ body {
     right: 0;
     bottom: 0;
     background: rgba(0, 0, 0, 0.5);
-    z-index: 998;
+    z-index: 999;
     opacity: 0;
     transition: opacity var(--transition-base);
 }
@@ -1739,7 +1739,7 @@ body {
         gap: var(--space-6);
     }
 
-    /* MOBILE SIDEBAR FIX - Main changes here */
+    /* CRITICAL MOBILE SIDEBAR FIXES */
     .lesson-container {
         grid-template-columns: 1fr;
         position: relative;
@@ -1752,13 +1752,44 @@ body {
         width: 85%;
         max-width: 350px;
         height: calc(100vh - 70px);
-        z-index: 997;
+        z-index: 1000;
         transition: left var(--transition-base);
         box-shadow: var(--shadow-xl);
+        /* CRITICAL: Enable scrolling on mobile */
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
     .lesson-sidebar.mobile-open {
         left: 0;
+    }
+
+    /* Ensure sidebar content is scrollable */
+    .lesson-sidebar-content {
+        min-height: 100%;
+        padding-bottom: 80px; /* Extra padding for mobile comfort */
+    }
+
+    /* Make sure lessons are clickable on mobile */
+    .sidebar-lesson {
+        /* Ensure proper touch target size */
+        min-height: 48px;
+        touch-action: manipulation;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .sidebar-lesson:active {
+        background: var(--bg-tertiary);
+    }
+
+    .sidebar-lesson.active:active {
+        background: var(--accent-hover);
+    }
+
+    /* Prevent text selection during touch */
+    .sidebar-lesson * {
+        pointer-events: none;
     }
 
     .mobile-sidebar-toggle {
@@ -1863,6 +1894,15 @@ body {
         font-size: 1.1rem;
         bottom: 16px;
         right: 16px;
+    }
+
+    /* Extra mobile comfort on very small screens */
+    .lesson-sidebar {
+        width: 90%;
+    }
+
+    .sidebar-lesson {
+        padding: var(--space-4);
     }
 }
 
