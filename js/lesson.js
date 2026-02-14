@@ -20,14 +20,44 @@ async function initLessonViewer() {
     
     courseId = getCourseIdFromUrl();
     if (!courseId) {
+        console.error('No courseId in URL');
         window.location.href = 'courses.html';
         return;
     }
 
-    await loadCourseData();
-    await loadProgressData();
-    determineCurrentLesson();
-    renderLessonViewer();
+    console.log('Loading course:', courseId);
+    
+    try {
+        await loadCourseData();
+        await loadProgressData();
+        await determineCurrentLesson();
+        renderLessonViewer();
+    } catch (error) {
+        console.error('Error initializing lesson viewer:', error);
+        showError('Failed to load lesson. Please try again.');
+    }
+}
+
+// Show error message
+function showError(message) {
+    document.body.innerHTML = `
+        <nav class="navbar">
+            <div class="container nav-container">
+                <a href="index.html" class="logo">Clarity Academy</a>
+                <ul class="nav-links">
+                    <li><a href="courses.html">Courses</a></li>
+                    <li><a href="dashboard.html">Dashboard</a></li>
+                    <li><a href="#" id="logoutLink">Logout</a></li>
+                </ul>
+            </div>
+        </nav>
+        <div class="container" style="padding: 3rem 0; text-align: center;">
+            <i class="fas fa-exclamation-circle" style="font-size: 4rem; color: var(--danger-color); margin-bottom: 1rem;"></i>
+            <h2>Error Loading Lesson</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;">${message}</p>
+            <a href="courses.html" class="btn btn-primary">Back to Courses</a>
+        </div>
+    `;
 }
 
 // Load course data
@@ -35,14 +65,20 @@ async function loadCourseData() {
     try {
         const courseDoc = await getDoc(doc(db, 'courses', courseId));
         if (!courseDoc.exists()) {
-            alert('Course not found');
-            window.location.href = 'courses.html';
-            return;
+            throw new Error('Course not found');
         }
+        
         courseData = { id: courseDoc.id, ...courseDoc.data() };
+        
+        // Validate course has modules and lessons
+        if (!courseData.modules || courseData.modules.length === 0) {
+            throw new Error('This course has no modules yet');
+        }
+        
+        console.log('Course data loaded:', courseData);
     } catch (error) {
         console.error('Error loading course:', error);
-        alert('Error loading course');
+        throw error;
     }
 }
 
@@ -59,42 +95,96 @@ async function loadProgressData() {
         
         if (!progressSnapshot.empty) {
             progressData = { id: progressSnapshot.docs[0].id, ...progressSnapshot.docs[0].data() };
+            console.log('Progress data loaded:', progressData);
         } else {
+            console.log('No progress found, creating new progress record');
             // Create initial progress if doesn't exist
-            const firstModule = courseData.modules?.sort((a, b) => a.order - b.order)[0];
-            const firstLesson = firstModule?.lessons?.sort((a, b) => a.order - b.order)[0];
-            
-            const newProgress = {
-                userId: auth.currentUser.uid,
-                courseId: courseId,
-                completedModules: [],
-                completedLessons: {},
-                currentModule: firstModule?.id || null,
-                currentLesson: firstLesson?.id || null,
-                lastAccessedAt: new Date(),
-                accessHistory: [],
-                updatedAt: new Date()
-            };
-            
-            const docRef = await addDoc(collection(db, 'progress'), newProgress);
-            progressData = { id: docRef.id, ...newProgress };
+            await createInitialProgress();
         }
     } catch (error) {
         console.error('Error loading progress:', error);
+        throw error;
     }
 }
 
+// Create initial progress record
+async function createInitialProgress() {
+    const sortedModules = courseData.modules.sort((a, b) => a.order - b.order);
+    const firstModule = sortedModules[0];
+    
+    if (!firstModule) {
+        throw new Error('No modules found in course');
+    }
+    
+    const sortedLessons = (firstModule.lessons || []).sort((a, b) => a.order - b.order);
+    const firstLesson = sortedLessons[0];
+    
+    if (!firstLesson) {
+        throw new Error('No lessons found in first module');
+    }
+    
+    const newProgress = {
+        userId: auth.currentUser.uid,
+        courseId: courseId,
+        completedModules: [],
+        completedLessons: {},
+        currentModule: firstModule.id,
+        currentLesson: firstLesson.id,
+        lastAccessedAt: new Date(),
+        accessHistory: [],
+        updatedAt: new Date()
+    };
+    
+    const docRef = await addDoc(collection(db, 'progress'), newProgress);
+    progressData = { id: docRef.id, ...newProgress };
+    console.log('Initial progress created:', progressData);
+}
+
 // Determine current lesson to show
-function determineCurrentLesson() {
-    if (progressData.currentModule && progressData.currentLesson) {
-        currentModuleId = progressData.currentModule;
-        currentLessonId = progressData.currentLesson;
-    } else {
-        // Default to first module and lesson
-        const firstModule = courseData.modules?.sort((a, b) => a.order - b.order)[0];
-        const firstLesson = firstModule?.lessons?.sort((a, b) => a.order - b.order)[0];
-        currentModuleId = firstModule?.id;
-        currentLessonId = firstLesson?.id;
+async function determineCurrentLesson() {
+    try {
+        // First, try to use progress data
+        if (progressData && progressData.currentModule && progressData.currentLesson) {
+            const module = courseData.modules.find(m => m.id === progressData.currentModule);
+            const lesson = module?.lessons?.find(l => l.id === progressData.currentLesson);
+            
+            if (module && lesson) {
+                currentModuleId = progressData.currentModule;
+                currentLessonId = progressData.currentLesson;
+                console.log('Using progress data - Module:', currentModuleId, 'Lesson:', currentLessonId);
+                return;
+            }
+        }
+        
+        // Fallback: Use first available lesson
+        const sortedModules = courseData.modules.sort((a, b) => a.order - b.order);
+        const firstModule = sortedModules[0];
+        
+        if (!firstModule) {
+            throw new Error('No modules available');
+        }
+        
+        const sortedLessons = (firstModule.lessons || []).sort((a, b) => a.order - b.order);
+        const firstLesson = sortedLessons[0];
+        
+        if (!firstLesson) {
+            throw new Error('No lessons available in first module');
+        }
+        
+        currentModuleId = firstModule.id;
+        currentLessonId = firstLesson.id;
+        
+        // Update progress to reflect this
+        await updateDoc(doc(db, 'progress', progressData.id), {
+            currentModule: currentModuleId,
+            currentLesson: currentLessonId,
+            updatedAt: new Date()
+        });
+        
+        console.log('Using first lesson - Module:', currentModuleId, 'Lesson:', currentLessonId);
+    } catch (error) {
+        console.error('Error determining current lesson:', error);
+        throw error;
     }
 }
 
@@ -164,7 +254,7 @@ function renderLessonViewer() {
     const lesson = module?.lessons.find(l => l.id === currentLessonId);
     
     if (!module || !lesson) {
-        document.body.innerHTML = '<div class="container"><p>Lesson not found</p></div>';
+        showError('Lesson not found. The course structure may have changed.');
         return;
     }
 
@@ -451,11 +541,11 @@ function convertToEmbedUrl(url) {
         return `https://www.youtube.com/embed/${videoId}`;
     }
     if (url.includes('youtu.be/')) {
-        const videoId = url.split('youtu.be/')[1];
+        const videoId = url.split('youtu.be/')[1].split('?')[0];
         return `https://www.youtube.com/embed/${videoId}`;
     }
     if (url.includes('vimeo.com/')) {
-        const videoId = url.split('vimeo.com/')[1];
+        const videoId = url.split('vimeo.com/')[1].split('?')[0];
         return `https://player.vimeo.com/video/${videoId}`;
     }
     return url;
