@@ -60,40 +60,44 @@ async function loadEnrolledCourses() {
 
         grid.innerHTML = '';
         for (const courseId of courseIds) {
-            const courseDoc = await getDoc(doc(db, 'courses', courseId));
-            if (courseDoc.exists()) {
-                const course = courseDoc.data();
-                const enrollment = enrollmentMap[courseId];
-                
-                const progressRef = collection(db, 'progress');
-                const progressQuery = query(
-                    progressRef,
-                    where('userId', '==', auth.currentUser.uid),
-                    where('courseId', '==', courseId)
-                );
-                const progressSnapshot = await getDocs(progressQuery);
-                
-                let progress = 0;
-                let lastModuleId = null;
-                let lastLessonId = null;
-                
-                if (!progressSnapshot.empty) {
-                    const progressData = progressSnapshot.docs[0].data();
+            try {
+                const courseDoc = await getDoc(doc(db, 'courses', courseId));
+                if (courseDoc.exists()) {
+                    const course = { id: courseDoc.id, ...courseDoc.data() };
+                    const enrollment = enrollmentMap[courseId];
                     
-                    // Calculate progress based on completed lessons
-                    const totalLessons = course.modules?.reduce((sum, mod) => 
-                        sum + (mod.lessons?.length || 0), 0) || 1;
+                    const progressRef = collection(db, 'progress');
+                    const progressQuery = query(
+                        progressRef,
+                        where('userId', '==', auth.currentUser.uid),
+                        where('courseId', '==', courseId)
+                    );
+                    const progressSnapshot = await getDocs(progressQuery);
                     
-                    const completedLessonsCount = Object.values(progressData.completedLessons || {})
-                        .reduce((sum, arr) => sum + arr.length, 0);
+                    let progress = 0;
+                    let lastModuleId = null;
+                    let lastLessonId = null;
                     
-                    progress = Math.round((completedLessonsCount / totalLessons) * 100);
-                    lastModuleId = progressData.currentModule;
-                    lastLessonId = progressData.currentLesson;
-                }
+                    if (!progressSnapshot.empty) {
+                        const progressData = progressSnapshot.docs[0].data();
+                        
+                        // Calculate progress based on completed lessons
+                        const totalLessons = course.modules?.reduce((sum, mod) => 
+                            sum + (mod.lessons?.length || 0), 0) || 1;
+                        
+                        const completedLessonsCount = Object.values(progressData.completedLessons || {})
+                            .reduce((sum, arr) => sum + arr.length, 0);
+                        
+                        progress = Math.round((completedLessonsCount / totalLessons) * 100);
+                        lastModuleId = progressData.currentModule;
+                        lastLessonId = progressData.currentLesson;
+                    }
 
-                const courseCard = createEnrolledCourseCard(courseId, course, progress, lastModuleId, lastLessonId);
-                grid.appendChild(courseCard);
+                    const courseCard = createEnrolledCourseCard(course, progress, lastModuleId, lastLessonId);
+                    grid.appendChild(courseCard);
+                }
+            } catch (error) {
+                console.error('Error loading course:', courseId, error);
             }
         }
     } catch (error) {
@@ -102,7 +106,7 @@ async function loadEnrolledCourses() {
     }
 }
 
-function createEnrolledCourseCard(id, course, progress, lastModuleId, lastLessonId) {
+function createEnrolledCourseCard(course, progress, lastModuleId, lastLessonId) {
     const card = document.createElement('div');
     card.className = 'course-card';
 
@@ -126,7 +130,7 @@ function createEnrolledCourseCard(id, course, progress, lastModuleId, lastLesson
             <div style="margin-top: 0.75rem; font-size: 0.875rem; color: var(--text-secondary);">
                 <i class="fas fa-layer-group"></i> ${moduleCount} modules
             </div>
-            <a href="lesson.html?courseId=${id}" class="btn btn-primary btn-full" style="margin-top: 1rem;">
+            <a href="lesson.html?courseId=${course.id}" class="btn btn-primary btn-full" style="margin-top: 1rem;">
                 ${progress > 0 ? 'Continue Learning' : 'Start Course'}
             </a>
         </div>
