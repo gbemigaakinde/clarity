@@ -33,6 +33,7 @@ async function initLessonViewer() {
         await determineCurrentLesson();
         renderLessonViewer();
         setupMobileSidebar();
+        setupEventListeners(); // NEW: Consolidated event listener setup
     } catch (error) {
         console.error('Error initializing lesson viewer:', error);
         showError('Failed to load lesson. Please try again.');
@@ -249,7 +250,7 @@ function isLessonAccessible(moduleId, lessonId) {
     return true;
 }
 
-// Setup mobile sidebar toggle - IMPROVED VERSION
+// Setup mobile sidebar toggle - FIXED VERSION
 function setupMobileSidebar() {
     // Remove any existing elements first
     const existingToggle = document.querySelector('.mobile-sidebar-toggle');
@@ -284,28 +285,24 @@ function setupMobileSidebar() {
         }
     };
 
-    // Toggle button click
+    // Toggle button click - FIXED: No stopPropagation
     toggleBtn.addEventListener('click', (e) => {
         e.preventDefault();
-        e.stopPropagation();
         const isOpen = sidebar.classList.contains('mobile-open');
         toggleSidebar(!isOpen);
     });
 
-    // Overlay click to close
+    // Overlay click to close - FIXED: No stopPropagation
     overlay.addEventListener('click', (e) => {
         e.preventDefault();
-        e.stopPropagation();
         toggleSidebar(false);
     });
 
     // Close sidebar when lesson is clicked on mobile
-    // Use event delegation for better mobile touch support
     sidebar.addEventListener('click', (e) => {
         const lessonElement = e.target.closest('.sidebar-lesson');
         if (lessonElement && !lessonElement.classList.contains('locked')) {
             if (window.innerWidth <= 768) {
-                // Small delay to allow click to register before closing
                 setTimeout(() => {
                     toggleSidebar(false);
                 }, 100);
@@ -313,20 +310,12 @@ function setupMobileSidebar() {
         }
     });
 
-    // Prevent scroll on body when sidebar is open (mobile)
-    sidebar.addEventListener('touchmove', (e) => {
-        if (sidebar.classList.contains('mobile-open')) {
-            e.stopPropagation();
-        }
-    }, { passive: true });
-
     // Handle window resize
     let resizeTimer;
     window.addEventListener('resize', () => {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(() => {
             if (window.innerWidth > 768) {
-                // Desktop view - ensure sidebar is in normal state
                 sidebar.classList.remove('mobile-open');
                 overlay.classList.remove('active');
                 document.body.style.overflow = '';
@@ -379,18 +368,8 @@ function renderLessonViewer() {
 
     renderSidebar();
     setupMobileSidebar();
+    setupEventListeners(); // Re-setup event listeners after render
     
-    // Re-attach auth listener
-    const logoutLink = document.getElementById('logoutLink');
-    if (logoutLink) {
-        logoutLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            auth.signOut().then(() => {
-                window.location.href = 'index.html';
-            });
-        });
-    }
-
     // Update access history
     if (accessible) {
         updateAccessHistory(currentLessonId);
@@ -458,7 +437,7 @@ function renderLockedContent(lesson) {
     `;
 }
 
-// Render sidebar - IMPROVED WITH BETTER MOBILE SUPPORT
+// Render sidebar - FIXED VERSION
 function renderSidebar() {
     const sidebarContent = document.getElementById('lessonSidebarContent');
     if (!sidebarContent) return;
@@ -475,19 +454,17 @@ function renderSidebar() {
             const isCompleted = (progressData.completedLessons?.[module.id] || []).includes(lesson.id);
             const accessible = isLessonAccessible(module.id, lesson.id);
             
-            // Determine CSS classes
             let cssClasses = 'sidebar-lesson';
             if (isCurrentLesson) cssClasses += ' active';
             if (isCompleted) cssClasses += ' completed';
             if (!accessible) cssClasses += ' locked';
             
-            // Create data attributes for easier mobile handling
             return `
                 <div class="${cssClasses}" 
                      data-module-id="${module.id}"
                      data-lesson-id="${lesson.id}"
                      data-accessible="${accessible}">
-                    <div>
+                    <div class="lesson-title-wrapper">
                         <span style="font-size: 0.875rem;">${lesson.order}. ${lesson.title}</span>
                         ${lesson.duration ? `<span style="font-size: 0.75rem; color: var(--text-secondary); display: block;">${lesson.duration} min</span>` : ''}
                     </div>
@@ -513,30 +490,21 @@ function renderSidebar() {
     
     sidebarContent.innerHTML = html;
     
-    // Attach click handlers using event delegation for better mobile support
-    sidebarContent.addEventListener('click', handleLessonClick);
-    
-    // Also support touch events for better mobile responsiveness
-    sidebarContent.addEventListener('touchend', handleLessonClick);
-}
-
-// Handle lesson click - IMPROVED FOR MOBILE
-function handleLessonClick(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const lessonElement = e.target.closest('.sidebar-lesson');
-    if (!lessonElement) return;
-    
-    const accessible = lessonElement.getAttribute('data-accessible') === 'true';
-    if (!accessible) return;
-    
-    const moduleId = lessonElement.getAttribute('data-module-id');
-    const lessonId = lessonElement.getAttribute('data-lesson-id');
-    
-    if (moduleId && lessonId) {
-        navigateToLesson(moduleId, lessonId);
-    }
+    // Attach click handlers using event delegation - FIXED
+    const lessons = sidebarContent.querySelectorAll('.sidebar-lesson');
+    lessons.forEach(lessonElement => {
+        lessonElement.addEventListener('click', (e) => {
+            const accessible = lessonElement.getAttribute('data-accessible') === 'true';
+            if (!accessible) return;
+            
+            const moduleId = lessonElement.getAttribute('data-module-id');
+            const lessonId = lessonElement.getAttribute('data-lesson-id');
+            
+            if (moduleId && lessonId) {
+                navigateToLesson(moduleId, lessonId);
+            }
+        });
+    });
 }
 
 // Navigate to lesson
@@ -678,20 +646,42 @@ function convertToEmbedUrl(url) {
     return url;
 }
 
-// Attach event listeners after render
-document.addEventListener('click', (e) => {
-    if (e.target.id === 'completeBtn') {
-        markLessonComplete();
+// NEW: Consolidated event listener setup
+function setupEventListeners() {
+    // Logout link
+    const logoutLink = document.getElementById('logoutLink');
+    if (logoutLink) {
+        logoutLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            auth.signOut().then(() => {
+                window.location.href = 'index.html';
+            });
+        });
     }
-    if (e.target.id === 'nextBtn') {
-        const { nextModule, nextLesson } = getNextLesson();
-        if (nextModule && nextLesson) {
-            currentModuleId = nextModule.id;
-            currentLessonId = nextLesson.id;
-            renderLessonViewer();
-        }
+
+    // Complete button
+    const completeBtn = document.getElementById('completeBtn');
+    if (completeBtn) {
+        completeBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            markLessonComplete();
+        });
     }
-});
+
+    // Next button
+    const nextBtn = document.getElementById('nextBtn');
+    if (nextBtn) {
+        nextBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const { nextModule, nextLesson } = getNextLesson();
+            if (nextModule && nextLesson) {
+                currentModuleId = nextModule.id;
+                currentLessonId = nextLesson.id;
+                renderLessonViewer();
+            }
+        });
+    }
+}
 
 // Export functions
 window.lessonViewer = {
