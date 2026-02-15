@@ -11,6 +11,8 @@ class AnimationController {
         this.setupTestimonialScroll();
         this.setupCardAnimations();
         this.setupModalAnimations();
+        this.animateCounters();
+        this.initFAQ();
     }
 
     // Scroll Reveal with IntersectionObserver
@@ -56,14 +58,14 @@ class AnimationController {
         }, { passive: true });
     }
 
-    // Infinite testimonial scroll - UPDATED
-setupTestimonialScroll() {
-    const scroll = document.querySelector('.testimonials-scroll');
-    if (!scroll) return;
+    // Infinite testimonial scroll
+    setupTestimonialScroll() {
+        const scroll = document.querySelector('.testimonials-scroll');
+        if (!scroll) return;
 
-    // No cloning needed - handled in HTML with testimonials-group structure
-    // Animation runs purely on CSS
-}
+        // No cloning needed - handled in HTML with testimonials-group structure
+        // Animation runs purely on CSS
+    }
 
     // Enhanced card interactions
     setupCardAnimations() {
@@ -130,6 +132,61 @@ setupTestimonialScroll() {
         setTimeout(() => {
             modal.style.display = 'none';
         }, 400);
+    }
+
+    // Counter Animation for Trust Stats
+    animateCounters() {
+        const counters = document.querySelectorAll('.trust-stat-number');
+        if (counters.length === 0) return;
+        
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const counter = entry.target;
+                    const target = parseInt(counter.dataset.target);
+                    const duration = 2000;
+                    const increment = target / (duration / 16);
+                    let current = 0;
+                    
+                    const updateCounter = () => {
+                        current += increment;
+                        if (current < target) {
+                            counter.textContent = Math.floor(current).toLocaleString();
+                            requestAnimationFrame(updateCounter);
+                        } else {
+                            counter.textContent = target.toLocaleString();
+                        }
+                    };
+                    
+                    updateCounter();
+                    observer.unobserve(counter);
+                }
+            });
+        }, { threshold: 0.5 });
+        
+        counters.forEach(counter => observer.observe(counter));
+    }
+
+    // FAQ Accordion
+    initFAQ() {
+        const faqItems = document.querySelectorAll('.faq-item');
+        if (faqItems.length === 0) return;
+        
+        faqItems.forEach(item => {
+            const question = item.querySelector('.faq-question');
+            
+            question.addEventListener('click', () => {
+                const isActive = item.classList.contains('active');
+                
+                // Close all items
+                faqItems.forEach(i => i.classList.remove('active'));
+                
+                // Open clicked item if it wasn't active
+                if (!isActive) {
+                    item.classList.add('active');
+                }
+            });
+        });
     }
 }
 
