@@ -591,19 +591,19 @@ body {
     display: flex;
     gap: var(--space-6);
     width: max-content;
-    animation: scroll-linear 40s linear infinite;
+    animation: scroll-infinite 30s linear infinite;
 }
 
 .testimonials-track:hover {
     animation-play-state: paused;
 }
 
-@keyframes scroll-linear {
-    from {
+@keyframes scroll-infinite {
+    0% {
         transform: translateX(0);
     }
-    to {
-        transform: translateX(-calc(380px * 3 + var(--space-6) * 2));
+    100% {
+        transform: translateX(-50%);
     }
 }
 
@@ -642,6 +642,25 @@ body {
 .testimonial-author span {
     color: var(--text-tertiary);
     font-size: 0.875rem;
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+    .testimonials-track {
+        animation-duration: 20s;
+    }
+    
+    .testimonial-card {
+        min-width: 300px;
+        max-width: 300px;
+    }
+}
+
+@media (max-width: 480px) {
+    .testimonial-card {
+        min-width: 280px;
+        max-width: 280px;
+    }
 }
 
 /* Footer */
