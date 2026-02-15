@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teaching Center - Clarity Academy</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container nav-container">
+            <a href="index.html" class="logo">Clarity Academy</a>
+            <ul class="nav-links">
+                <li><a href="courses.html">Courses</a></li>
+                <li><a href="dashboard.html" id="dashboardLink" style="display: none;">Dashboard</a></li>
+                <li><a href="admin/index.html" id="adminLink" style="display: none;">Admin</a></li>
+                <li><a href="login.html" id="loginLink">Login</a></li>
+                <li><a href="#" id="logoutLink" style="display: none;">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <section class="page-header">
+        <div class="container">
+            <h1>Teaching Center</h1>
+            <p>Resources and guides for instructors</p>
+        </div>
+    </section>
+
+    <section class="content-section">
+        <div class="container">
+            <div class="teaching-resources">
+                <div class="resource-category">
+                    <h2><i class="fas fa-rocket"></i> Getting Started</h2>
+                    <div class="resource-grid">
+                        <div class="resource-card">
+                            <h3>Course Planning Guide</h3>
+                            <p>Learn how to structure your course for maximum student engagement and learning outcomes.</p>
+                            <a href="#" class="btn btn-sm btn-secondary">Read Guide</a>
+                        </div>
+                        <div class="resource-card">
+                            <h3>Video Recording Best Practices</h3>
+                            <p>Technical tips for creating professional-quality video content that students will love.</p>
+                            <a href="#" class="btn btn-sm btn-secondary">Read Guide</a>
+                        </div>
+                        <div class="resource-card">
+                            <h3>Platform Walkthrough</h3>
+                            <p>Complete guide to using our course creation tools and instructor dashboard.</p>
+                            <a href="#" class="btn btn-sm btn-secondary">Watch Video</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="resource-category">
+                    <h2><i class="fas fa-chart-line"></i> Growing Your Audience</h2>
+                    <div class="resource-grid">
+                        <div class="resource-card">
+                            <h3>Marketing Your Course</h3>
+                            <p>Strategies to promote your course and reach more students effectively.</p>
+                            <a href="#" class="btn btn-sm btn-secondary">Read Guide</a>
+                        </div>
+                        <div class="resource-card">
+                            <h3>Student Engagement Tips</h3>
+                            <p>Keep students motivated and increase course completion rates.</p>
+                            <a href="#" class="btn btn-sm btn-secondary">Read Guide</a>
+                        </div>
+                        <div class="resource-card">
+                            <h3>Building Your Brand</h3>
+                            <p>Establish yourself as an expert in your field and grow your reputation.</p>
+                            <a href="#" class="btn btn-sm btn-secondary">Read Guide</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="resource-category">
+                    <h2><i class="fas fa-lightbulb"></i> Best Practices</h2>
+                    <div class="resource-grid">
+                        <div class="resource-card">
+                            <h3>Creating Engaging Content</h3>
+                            <p>Design lessons that keep students interested and facilitate deep learning.</p>
+                            <a href="#" class="btn btn-sm btn-secondary">Read Guide</a>
+                        </div>
+                        <div class="resource-card">
+                            <h3>Assessment & Quizzes</h3>
+                            <p>Build effective assessments that reinforce learning and provide value.</p>
+                            <a href="#" class="btn btn-sm btn-secondary">Read Guide</a>
+                        </div>
+                        <div class="resource-card">
+                            <h3>Student Feedback</h3>
+                            <p>Use student feedback to continuously improve your courses.</p>
+                            <a href="#" class="btn btn-sm btn-secondary">Read Guide</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="cta-box">
+                    <h3>Need Help?</h3>
+                    <p>Our instructor support team is here to help you succeed</p>
+                    <a href="contact.html" class="btn btn-primary">Contact Support</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>Clarity Academy</h4>
+                    <p>Professional online learning platform for ambitious learners worldwide.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Learn</h4>
+                    <ul>
+                        <li><a href="courses.html">All Courses</a></li>
+                        <li><a href="dashboard.html">Dashboard</a></li>
+                        <li><a href="become-instructor.html">Become an Instructor</a></li>
+                        <li><a href="teaching-center.html">Teaching Center</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Company</h4>
+                    <ul>
+                        <li><a href="about.html">About Us</a></li>
+                        <li><a href="contact.html">Contact</a></li>
+                        <li><a href="careers.html">Careers</a></li>
+                        <li><a href="blog.html">Blog</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Support</h4>
+                    <ul>
+                        <li><a href="help.html">Help Center</a></li>
+                        <li><a href="terms.html">Terms of Service</a></li>
+                        <li><a href="privacy.html">Privacy Policy</a></li>
+                        <li><a href="cookies.html">Cookie Policy</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Clarity Academy. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script type="module" src="js/firebase-config.js"></script>
+    <script type="module" src="js/auth.js"></script>
+    <script src="js/animations.js"></script>
+</body>
+</html>
