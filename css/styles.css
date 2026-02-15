@@ -553,7 +553,7 @@ body {
     border-radius: 0.25rem;
 }
 
-/* Testimonials - Infinite Continuous Scroll */
+/* Testimonials - True Continuous Scroll */
 .testimonials {
     padding: var(--space-12) 0;
     background-color: var(--bg-secondary);
@@ -591,19 +591,19 @@ body {
     display: flex;
     gap: var(--space-6);
     width: max-content;
-    animation: scroll-infinite 30s linear infinite;
+    animation: scroll-linear 40s linear infinite;
 }
 
 .testimonials-track:hover {
     animation-play-state: paused;
 }
 
-@keyframes scroll-infinite {
-    0% {
+@keyframes scroll-linear {
+    from {
         transform: translateX(0);
     }
-    100% {
-        transform: translateX(-50%);
+    to {
+        transform: translateX(-calc(380px * 3 + var(--space-6) * 2));
     }
 }
 
