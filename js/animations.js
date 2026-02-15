@@ -56,18 +56,14 @@ class AnimationController {
         }, { passive: true });
     }
 
-    // Infinite testimonial scroll
-    setupTestimonialScroll() {
-        const track = document.querySelector('.testimonials-track');
-        if (!track) return;
+    // Infinite testimonial scroll - UPDATED
+setupTestimonialScroll() {
+    const scroll = document.querySelector('.testimonials-scroll');
+    if (!scroll) return;
 
-        // Clone testimonial cards for seamless loop
-        const cards = Array.from(track.children);
-        cards.forEach(card => {
-            const clone = card.cloneNode(true);
-            track.appendChild(clone);
-        });
-    }
+    // No cloning needed - handled in HTML with testimonials-group structure
+    // Animation runs purely on CSS
+}
 
     // Enhanced card interactions
     setupCardAnimations() {
