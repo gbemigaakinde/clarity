@@ -553,7 +553,7 @@ body {
     border-radius: 0.25rem;
 }
 
-/* Testimonials - Infinite Scroll (COMPLETE REWRITE) */
+/* Testimonials - Infinite Scroll (MOBILE-FIXED) */
 .testimonials {
     padding: var(--space-12) 0;
     background-color: var(--bg-secondary);
@@ -599,20 +599,21 @@ body {
 .testimonials-scroll {
     display: flex;
     gap: 2rem;
-    animation: testimonial-scroll 40s linear infinite;
     width: fit-content;
+    animation: testimonial-scroll-desktop 40s linear infinite;
 }
 
 .testimonials-scroll:hover {
     animation-play-state: paused;
 }
 
-@keyframes testimonial-scroll {
+/* Desktop animation - 5 cards at 400px each + 4 gaps at 2rem each */
+@keyframes testimonial-scroll-desktop {
     0% {
         transform: translateX(0);
     }
     100% {
-        transform: translateX(calc(-50% - 1rem));
+        transform: translateX(calc(-2000px - 8rem));
     }
 }
 
@@ -658,10 +659,24 @@ body {
     font-size: 0.875rem;
 }
 
-/* Responsive */
+/* Tablet/Mobile - 5 cards at 320px each + 4 gaps at 1.5rem each */
 @media (max-width: 768px) {
     .testimonials-scroll {
-        animation-duration: 30s;
+        animation: testimonial-scroll-tablet 30s linear infinite;
+        gap: 1.5rem;
+    }
+    
+    .testimonials-group {
+        gap: 1.5rem;
+    }
+    
+    @keyframes testimonial-scroll-tablet {
+        0% {
+            transform: translateX(0);
+        }
+        100% {
+            transform: translateX(calc(-1600px - 6rem));
+        }
     }
     
     .testimonial-card {
@@ -674,14 +689,24 @@ body {
     }
 }
 
+/* Small Mobile - 5 cards at 280px each + 4 gaps at 1.5rem each */
 @media (max-width: 480px) {
     .testimonials-scroll {
-        animation-duration: 25s;
+        animation: testimonial-scroll-mobile 25s linear infinite;
         gap: 1.5rem;
     }
     
     .testimonials-group {
         gap: 1.5rem;
+    }
+    
+    @keyframes testimonial-scroll-mobile {
+        0% {
+            transform: translateX(0);
+        }
+        100% {
+            transform: translateX(calc(-1400px - 6rem));
+        }
     }
     
     .testimonial-card {
