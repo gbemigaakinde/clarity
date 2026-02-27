@@ -3,54 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Clarity Academy</title>
+    <title>Sign In — Clarity Academy</title>
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <nav class="navbar">
-        <div class="container nav-container">
-            <a href="index.html" class="logo">Clarity Academy</a>
-            <ul class="nav-links">
-                <li><a href="courses.html">Courses</a></li>
-                <li><a href="register.html">Register</a></li>
-            </ul>
-        </div>
-    </nav>
 
-    <section class="auth-section">
-        <div class="auth-container">
-            <div class="auth-card">
-                <h1>Welcome Back</h1>
-                <p class="auth-subtitle">Login to your account</p>
+<div class="auth-page">
+    <!-- Form panel -->
+    <div class="auth-panel">
+        <div class="auth-form-wrap">
+            <div class="auth-brand">
+                <a href="index.html" class="auth-brand__logo">
+                    <div class="nav__logo-mark">CA</div>
+                    Clarity Academy
+                </a>
+            </div>
 
-                <div id="errorMessage" class="error-message" style="display: none;"></div>
+            <h1>Welcome back</h1>
+            <p class="auth-subtitle">Sign in to continue your learning journey.</p>
 
-                <form id="loginForm" class="auth-form">
-                    <div class="form-group">
-                        <label for="email">Email Address</label>
-                        <input type="email" id="email" required autocomplete="email">
-                    </div>
+            <div id="errorMessage" class="alert alert--error" style="display:none"></div>
 
-                    <div class="form-group">
-                        <label for="password">Password</label>
-                        <input type="password" id="password" required autocomplete="current-password">
-                    </div>
-
-                    <button type="submit" class="btn btn-primary btn-full" id="loginBtn">
-                        Login
-                    </button>
-                </form>
-
-                <div class="auth-links">
-                    <a href="reset-password.html">Forgot password?</a>
-                    <span>Don't have an account? <a href="register.html">Register</a></span>
+            <form id="loginForm" class="auth-form" novalidate>
+                <div class="form-field">
+                    <label for="email" class="form-label">Email address</label>
+                    <input type="email" id="email" class="form-input" placeholder="you@example.com" required autocomplete="email">
                 </div>
+                <div class="form-field">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password" id="password" class="form-input" placeholder="Your password" required autocomplete="current-password">
+                </div>
+                <button type="submit" class="btn btn--primary btn--full" id="loginBtn">
+                    Sign In
+                </button>
+            </form>
+
+            <div class="auth-links">
+                <a href="reset-password.html">Forgot your password?</a>
+                <span>Don't have an account? <a href="register.html">Create one free</a></span>
             </div>
         </div>
-    </section>
+    </div>
 
-    <script type="module" src="js/firebase-config.js"></script>
-    <script type="module" src="js/login.js"></script>
+    <!-- Hero panel -->
+    <div class="auth-hero-panel">
+        <div class="auth-hero-panel__inner">
+            <h2 class="display">Your skills are waiting to grow</h2>
+            <p>Join 50,000+ professionals learning on Clarity Academy. Expert-led courses, lifetime access, and real career impact.</p>
+        </div>
+    </div>
+</div>
+
+<script type="module" src="js/firebase-config.js"></script>
+<script type="module" src="js/login.js"></script>
 </body>
 </html>
