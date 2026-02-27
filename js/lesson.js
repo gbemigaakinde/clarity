@@ -389,6 +389,9 @@ function goToNext() {
     const idx = allLessons.findIndex(l => l.id === currentLessonId);
     if (idx < allLessons.length - 1) {
         const next = allLessons[idx + 1];
+        const nextMod = allModules.find(m => m.id === next.moduleId);
+        const completedLessons = progressData?.completedLessons || {};
+        if (nextMod && isLessonLocked(nextMod, next, completedLessons)) return;
         navigateTo(next.moduleId, next.id);
     }
 }
