@@ -342,8 +342,8 @@ function buildNav() {
                 <button class="btn btn--success" id="btnComplete">
                     <i class="fas fa-check"></i> Mark Complete
                 </button>` : ''}
-            <button class="btn btn--primary" id="btnNext" ${next ? '' : 'disabled'}>
-                Next <i class="fas fa-arrow-right"></i>
+           <button class="btn btn--primary" id="btnNext" ${!next || isLessonLocked(allModules.find(m => m.id === next.moduleId), next, completedLessons) ? 'disabled' : ''}>
+                 Next <i class="fas fa-arrow-right"></i>
             </button>
         </div>`;
 }
