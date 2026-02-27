@@ -3,18 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lesson - Clarity Academy</title>
+    <title>Lesson — Clarity Academy</title>
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body>
-    <!-- Content will be dynamically generated -->
-    <div class="container" style="padding: 3rem 0;">
-        <p class="loading">Loading lesson...</p>
-    </div>
+<body style="overflow:hidden">
 
-    <script type="module" src="js/firebase-config.js"></script>
-    <script type="module" src="js/auth.js"></script>
-    <script type="module" src="js/lesson.js"></script>
+<nav class="nav" id="mainNav" style="position:sticky">
+    <div class="container nav__inner">
+        <a href="index.html" class="nav__logo">
+            <div class="nav__logo-mark">CA</div>
+            Clarity Academy
+        </a>
+        <ul class="nav__links">
+            <li><a href="dashboard.html" class="nav__link" id="dashboardLink">
+                <i class="fas fa-th-large"></i> My Courses
+            </a></li>
+            <li><a href="#" class="nav__link" id="logoutLink" style="display:none">Sign Out</a></li>
+            <li><a href="login.html" class="nav__link" id="loginLink" style="display:none">Sign In</a></li>
+        </ul>
+    </div>
+</nav>
+
+<div id="lessonApp" style="display:flex;align-items:center;justify-content:center;height:calc(100vh - var(--nav-h))">
+    <p class="loading-text">Loading lesson…</p>
+</div>
+
+<!-- Mobile toggle -->
+<button class="lesson-sidebar-toggle" id="sidebarToggle" aria-label="Toggle course navigation" style="display:none">
+    <i class="fas fa-list"></i>
+</button>
+
+<div class="lesson-sidebar-overlay" id="sidebarOverlay"></div>
+
+<script type="module" src="js/firebase-config.js"></script>
+<script type="module" src="js/auth.js"></script>
+<script type="module" src="js/lesson.js"></script>
 </body>
 </html>
