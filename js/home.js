@@ -2,29 +2,33 @@ import { db } from './firebase-config.js';
 import { collection, query, where, getDocs, limit } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { transformImageUrl } from './image-utils.js';
 
+const revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+        if (e.isIntersecting) {
+            e.target.classList.add('is-visible');
+            revealObserver.unobserve(e.target);
+        }
+    });
+}, { threshold: 0.08, rootMargin: '0px 0px -20px 0px' });
+
 async function loadFeaturedCourses() {
     const grid = document.getElementById('featuredCoursesGrid');
     if (!grid) return;
 
-    // Show skeletons
     grid.innerHTML = Array(3).fill(0).map(() => `
         <div class="skeleton-card">
             <div class="skeleton-thumb"></div>
             <div class="skeleton-body">
-                <div class="skeleton-line skeleton skeleton--sm" style="height:12px; width:40%"></div>
-                <div class="skeleton-line skeleton" style="height:16px; width:80%; margin-top:8px"></div>
-                <div class="skeleton-line skeleton" style="height:16px; width:65%; margin-top:6px"></div>
-                <div class="skeleton-line skeleton" style="height:12px; width:55%; margin-top:12px"></div>
+                <div class="skeleton-line skeleton" style="height:12px;width:40%"></div>
+                <div class="skeleton-line skeleton" style="height:16px;width:80%;margin-top:8px"></div>
+                <div class="skeleton-line skeleton" style="height:16px;width:65%;margin-top:6px"></div>
+                <div class="skeleton-line skeleton" style="height:12px;width:55%;margin-top:12px"></div>
             </div>
         </div>
     `).join('');
 
     try {
-        const q = query(
-            collection(db, 'courses'),
-            where('published', '==', true),
-            limit(3)
-        );
+        const q = query(collection(db, 'courses'), where('published', '==', true), limit(3));
         const snap = await getDocs(q);
 
         if (snap.empty) {
@@ -33,9 +37,11 @@ async function loadFeaturedCourses() {
         }
 
         grid.innerHTML = '';
-        snap.forEach(doc => {
-            grid.appendChild(buildCourseCard(doc.id, doc.data()));
-        });
+        snap.forEach(doc => grid.appendChild(buildCourseCard(doc.id, doc.data())));
+
+        // Cards are now in the DOM — observe them for the reveal animation
+        grid.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+
     } catch (err) {
         console.error(err);
         grid.innerHTML = '<p class="loading-text">Could not load courses.</p>';
@@ -69,7 +75,9 @@ function buildCourseCard(id, course) {
                 <span class="course-card__meta-item"><i class="fas fa-play-circle"></i> ${lessonCount} lessons</span>
             </div>
             <div class="course-card__footer">
-                <span class="course-card__instructor"><i class="fas fa-user-circle" style="color:var(--ink-300)"></i> ${course.instructor}</span>
+                <span class="course-card__instructor">
+                    <i class="fas fa-user-circle" style="color:var(--ink-300)"></i> ${course.instructor}
+                </span>
                 <span class="course-card__price">$${course.price}</span>
             </div>
         </div>
