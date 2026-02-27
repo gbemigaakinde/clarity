@@ -2,62 +2,79 @@ import { db } from './firebase-config.js';
 import { collection, query, where, getDocs, limit } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { transformImageUrl } from './image-utils.js';
 
-// Load featured courses
 async function loadFeaturedCourses() {
     const grid = document.getElementById('featuredCoursesGrid');
-    
+    if (!grid) return;
+
+    // Show skeletons
+    grid.innerHTML = Array(3).fill(0).map(() => `
+        <div class="skeleton-card">
+            <div class="skeleton-thumb"></div>
+            <div class="skeleton-body">
+                <div class="skeleton-line skeleton skeleton--sm" style="height:12px; width:40%"></div>
+                <div class="skeleton-line skeleton" style="height:16px; width:80%; margin-top:8px"></div>
+                <div class="skeleton-line skeleton" style="height:16px; width:65%; margin-top:6px"></div>
+                <div class="skeleton-line skeleton" style="height:12px; width:55%; margin-top:12px"></div>
+            </div>
+        </div>
+    `).join('');
+
     try {
-        const coursesRef = collection(db, 'courses');
-        const q = query(coursesRef, where('published', '==', true), limit(3));
-        const querySnapshot = await getDocs(q);
-        
-        if (querySnapshot.empty) {
-            grid.innerHTML = '<p class="loading">No courses available yet.</p>';
+        const q = query(
+            collection(db, 'courses'),
+            where('published', '==', true),
+            limit(3)
+        );
+        const snap = await getDocs(q);
+
+        if (snap.empty) {
+            grid.innerHTML = '<p class="loading-text">No courses available yet.</p>';
             return;
         }
-        
+
         grid.innerHTML = '';
-        querySnapshot.forEach((doc) => {
-            const course = doc.data();
-            const courseCard = createCourseCard(doc.id, course);
-            grid.appendChild(courseCard);
+        snap.forEach(doc => {
+            grid.appendChild(buildCourseCard(doc.id, doc.data()));
         });
-    } catch (error) {
-        console.error('Error loading courses:', error);
-        grid.innerHTML = '<p class="loading">Error loading courses.</p>';
+    } catch (err) {
+        console.error(err);
+        grid.innerHTML = '<p class="loading-text">Could not load courses.</p>';
     }
 }
 
-function createCourseCard(id, course) {
-    const card = document.createElement('div');
-    card.className = 'course-card';
-    card.onclick = () => window.location.href = `course-detail.html?id=${id}`;
-    
-    // Transform the thumbnail URL
-    const thumbnailUrl = transformImageUrl(course.thumbnail || '');
-    
+function buildCourseCard(id, course) {
+    const card = document.createElement('a');
+    card.className = 'course-card reveal';
+    card.href = `course-detail.html?id=${id}`;
+
+    const thumb = transformImageUrl(course.thumbnail || '');
+    const moduleCount = course.modules?.length || 0;
+    const lessonCount = course.modules?.reduce((s, m) => s + (m.lessons?.length || 0), 0) || 0;
+
     card.innerHTML = `
-        <img src="${thumbnailUrl}" 
-             alt="${course.title}"
-             onerror="this.onerror=null; this.src='https://via.placeholder.com/400x200/4F46E5/FFFFFF?text=${encodeURIComponent(course.title)}'; this.style.opacity='0.7';">
-        <div class="course-card-content">
-            <span class="course-category">${course.category}</span>
-            <h3>${course.title}</h3>
-            <p>${course.description.substring(0, 100)}...</p>
-            <div class="course-meta">
-                <span class="course-instructor">
-                    <i class="fas fa-user"></i>
-                    ${course.instructor}
-                </span>
-                <span class="course-price">$${course.price}</span>
+        <div class="course-card__thumb">
+            <img src="${thumb}" alt="${course.title}"
+                 onerror="this.onerror=null;this.src='https://via.placeholder.com/640x360/111118/FFFFFF?text=${encodeURIComponent(course.title)}';this.style.opacity='0.5'">
+            <div class="course-card__thumb-overlay"></div>
+            <div class="course-card__play">
+                <div class="course-card__play-btn"><i class="fas fa-play" style="margin-left:2px"></i></div>
+            </div>
+        </div>
+        <div class="course-card__body">
+            <span class="badge badge--category course-card__category">${course.category}</span>
+            <h3 class="course-card__title">${course.title}</h3>
+            <p class="course-card__desc">${course.description}</p>
+            <div class="course-card__meta">
+                <span class="course-card__meta-item"><i class="fas fa-layer-group"></i> ${moduleCount} modules</span>
+                <span class="course-card__meta-item"><i class="fas fa-play-circle"></i> ${lessonCount} lessons</span>
+            </div>
+            <div class="course-card__footer">
+                <span class="course-card__instructor"><i class="fas fa-user-circle" style="color:var(--ink-300)"></i> ${course.instructor}</span>
+                <span class="course-card__price">$${course.price}</span>
             </div>
         </div>
     `;
-    
     return card;
 }
 
-// Initialize
-document.addEventListener('DOMContentLoaded', () => {
-    loadFeaturedCourses();
-});
+document.addEventListener('DOMContentLoaded', loadFeaturedCourses);
