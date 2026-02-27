@@ -3,295 +3,308 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - Clarity Academy</title>
+    <title>Admin — Clarity Academy</title>
     <link rel="stylesheet" href="../css/styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <nav class="navbar">
-        <div class="container nav-container">
-            <a href="../index.html" class="logo">Clarity Academy</a>
-            <ul class="nav-links">
-                <li><a href="../courses.html">Courses</a></li>
-                <li><a href="../dashboard.html">Dashboard</a></li>
-                <li><a href="index.html">Admin</a></li>
-                <li><a href="#" id="logoutLink">Logout</a></li>
-            </ul>
-        </div>
-    </nav>
 
-    <section class="page-header">
-        <div class="container">
-            <h1>Admin Dashboard</h1>
-            <p>Manage courses and platform settings</p>
-        </div>
-    </section>
+<!-- Sticky top nav -->
+<nav class="nav" style="position:sticky;top:0;z-index:300">
+    <div class="container nav__inner">
+        <a href="../index.html" class="nav__logo">
+            <div class="nav__logo-mark">CA</div>
+            Clarity Academy
+        </a>
+        <ul class="nav__links">
+            <li><a href="../index.html" class="nav__link">← Back to site</a></li>
+            <li><a href="#" class="nav__link" id="logoutLink">Sign Out</a></li>
+        </ul>
+    </div>
+</nav>
 
-    <section class="admin-section">
-        <div class="container">
-            <div class="admin-stats">
-                <div class="stat-card scroll-reveal">
-                    <i class="fas fa-book"></i>
-                    <div class="stat-content">
-                        <h3 id="totalCourses">0</h3>
-                        <p>Total Courses</p>
-                    </div>
-                </div>
-                <div class="stat-card scroll-reveal scroll-reveal-delay-1">
-                    <i class="fas fa-users"></i>
-                    <div class="stat-content">
-                        <h3 id="totalStudents">0</h3>
-                        <p>Total Students</p>
-                    </div>
-                </div>
-                <div class="stat-card scroll-reveal scroll-reveal-delay-2">
-                    <i class="fas fa-graduation-cap"></i>
-                    <div class="stat-content">
-                        <h3 id="totalEnrollments">0</h3>
-                        <p>Total Enrollments</p>
-                    </div>
+<div class="admin-layout">
+
+    <!-- Admin sidebar -->
+    <aside class="admin-sidebar">
+        <div class="admin-sidebar__logo">
+            Admin
+            <span class="admin-sidebar__mark">Panel</span>
+        </div>
+
+        <div class="admin-nav__section">Content</div>
+        <a href="index.html" class="admin-nav__item is-active">
+            <i class="fas fa-graduation-cap"></i> Courses
+        </a>
+
+        <div class="admin-nav__section" style="margin-top:var(--s-4)">Site</div>
+        <a href="../index.html" class="admin-nav__item">
+            <i class="fas fa-home"></i> View Site
+        </a>
+        <a href="../dashboard.html" class="admin-nav__item">
+            <i class="fas fa-users"></i> Student View
+        </a>
+    </aside>
+
+    <!-- Admin main -->
+    <main class="admin-main">
+
+        <!-- Stats -->
+        <div class="admin-stats-grid">
+            <div class="admin-stat-card">
+                <div class="admin-stat-card__icon"><i class="fas fa-graduation-cap"></i></div>
+                <div>
+                    <div class="admin-stat-card__num" id="statTotalCourses">—</div>
+                    <div class="admin-stat-card__label">Total Courses</div>
                 </div>
             </div>
+            <div class="admin-stat-card">
+                <div class="admin-stat-card__icon"><i class="fas fa-users"></i></div>
+                <div>
+                    <div class="admin-stat-card__num" id="statTotalStudents">—</div>
+                    <div class="admin-stat-card__label">Students</div>
+                </div>
+            </div>
+            <div class="admin-stat-card">
+                <div class="admin-stat-card__icon"><i class="fas fa-bookmark"></i></div>
+                <div>
+                    <div class="admin-stat-card__num" id="statTotalEnrollments">—</div>
+                    <div class="admin-stat-card__label">Enrollments</div>
+                </div>
+            </div>
+        </div>
 
-            <div class="admin-actions">
-                <button class="btn btn-primary" id="createCourseBtn">
-                    <i class="fas fa-plus"></i> Create New Course
+        <!-- Courses list -->
+        <div class="admin-page-header">
+            <h1>Courses</h1>
+            <div style="display:flex;gap:var(--s-3);align-items:center;flex-wrap:wrap">
+                <div class="search-field" style="min-width:220px">
+                    <i class="fas fa-search search-field__icon"></i>
+                    <input type="text" id="courseSearch" class="form-input" placeholder="Search courses…">
+                </div>
+                <button class="btn btn--primary" id="createCourseBtn">
+                    <i class="fas fa-plus"></i> New Course
                 </button>
             </div>
-
-            <div class="admin-courses">
-                <h2>Manage Courses</h2>
-                <div id="adminCoursesGrid" class="courses-grid">
-                    <div class="loading">Loading courses...</div>
-                </div>
-            </div>
         </div>
-    </section>
 
-    <!-- Course Form Modal -->
-    <div id="courseModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modalTitle">Create Course</h2>
-                <span class="close">&times;</span>
-            </div>
-            <div class="modal-body">
-                <form id="courseForm">
-                    <div class="form-group">
-                        <label for="courseTitle">Course Title</label>
-                        <input type="text" id="courseTitle" required>
-                    </div>
+        <div id="coursesList"></div>
 
-                    <div class="form-group">
-                        <label for="courseSlug">URL Slug</label>
-                        <input type="text" id="courseSlug" required>
-                        <small>e.g., web-development-fundamentals</small>
-                    </div>
+    </main>
+</div>
 
-                    <div class="form-group">
-                        <label for="courseDescription">Description</label>
-                        <textarea id="courseDescription" rows="4" required></textarea>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="courseCategory">Category</label>
-                        <select id="courseCategory" required>
-                            <option value="">Select Category</option>
-                            <option value="Development">Development</option>
-                            <option value="Business">Business</option>
-                            <option value="Design">Design</option>
-                            <option value="Marketing">Marketing</option>
-                            <option value="Data Science">Data Science</option>
-                            <option value="Language">Language</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="courseInstructor">Instructor Name</label>
-                        <input type="text" id="courseInstructor" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="courseThumbnail">Thumbnail URL</label>
-                        <input type="url" id="courseThumbnail" required>
-                        <small>Enter a valid image URL</small>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="coursePrice">Price (USD)</label>
-                        <input type="number" id="coursePrice" min="0" step="0.01" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="courseAccessType">Default Access Type</label>
-                        <select id="courseAccessType">
-                            <option value="sequential">Sequential</option>
-                            <option value="anytime">Anytime</option>
-                            <option value="daily">Daily</option>
-                            <option value="weekly">Weekly</option>
-                            <option value="monthly">Monthly</option>
-                        </select>
-                        <small>Default access rule for all lessons</small>
-                    </div>
-
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" id="courseAllowSkip">
-                            Allow students to skip lessons
-                        </label>
-                    </div>
-
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" id="coursePublished">
-                            Published (visible to students)
-                        </label>
-                    </div>
-
-                    <input type="hidden" id="courseId">
-
-                    <div class="form-actions">
-                        <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
-                        <button type="submit" class="btn btn-primary" id="saveCourseBtn">Save Course</button>
-                    </div>
-                </form>
-            </div>
+<!-- ══ Course Modal ══ -->
+<div class="modal-backdrop" id="courseModal">
+    <div class="modal modal--lg">
+        <div class="modal__header">
+            <h2 class="modal__title" id="courseModalTitle">New Course</h2>
+            <button class="modal__close" type="button"><i class="fas fa-times"></i></button>
         </div>
-    </div>
+        <div class="modal__body">
+            <form id="courseForm">
+                <input type="hidden" id="courseId">
 
-    <!-- Module Management Modal -->
-    <div id="modulesModal" class="modal">
-        <div class="modal-content modal-large">
-            <div class="modal-header">
-                <h2>Manage Modules & Lessons</h2>
-                <span class="close" id="closeModulesModal">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div class="modules-manager">
-                    <div class="modules-header">
-                        <h3 id="modulesCourseName"></h3>
-                        <button class="btn btn-primary btn-sm" id="addModuleBtn">
-                            <i class="fas fa-plus"></i> Add Module
-                        </button>
+                <div class="form-section">
+                    <div class="form-section__title">Basic Information</div>
+                    <div class="form-grid" style="gap:var(--s-4);margin-bottom:var(--s-4)">
+                        <div class="form-field">
+                            <label class="form-label" for="courseTitle">Course Title <span style="color:var(--ruby-500)">*</span></label>
+                            <input type="text" id="courseTitle" class="form-input" required placeholder="e.g. Complete Python Bootcamp">
+                        </div>
+                        <div class="form-field">
+                            <label class="form-label" for="courseSlug">URL Slug <span style="color:var(--ruby-500)">*</span></label>
+                            <input type="text" id="courseSlug" class="form-input" required placeholder="e.g. complete-python-bootcamp">
+                        </div>
                     </div>
-
-                    <div id="modulesList" class="modules-admin-list">
-                        <div class="loading">Loading modules...</div>
+                    <div class="form-field" style="margin-bottom:var(--s-4)">
+                        <label class="form-label" for="courseDescription">Description <span style="color:var(--ruby-500)">*</span></label>
+                        <textarea id="courseDescription" class="form-textarea" required placeholder="Describe what students will learn in this course…" style="min-height:120px"></textarea>
+                    </div>
+                    <div class="form-grid" style="gap:var(--s-4)">
+                        <div class="form-field">
+                            <label class="form-label" for="courseCategory">Category <span style="color:var(--ruby-500)">*</span></label>
+                            <select id="courseCategory" class="form-select" required>
+                                <option value="">Select category…</option>
+                                <option value="Development">Development</option>
+                                <option value="Business">Business</option>
+                                <option value="Design">Design</option>
+                                <option value="Marketing">Marketing</option>
+                                <option value="Data Science">Data Science</option>
+                            </select>
+                        </div>
+                        <div class="form-field">
+                            <label class="form-label" for="courseInstructor">Instructor Name <span style="color:var(--ruby-500)">*</span></label>
+                            <input type="text" id="courseInstructor" class="form-input" required placeholder="e.g. Dr. Jane Smith">
+                        </div>
                     </div>
                 </div>
-            </div>
+
+                <div class="form-section">
+                    <div class="form-section__title">Media & Pricing</div>
+                    <div class="form-field" style="margin-bottom:var(--s-4)">
+                        <label class="form-label" for="courseThumbnail">Thumbnail URL</label>
+                        <input type="url" id="courseThumbnail" class="form-input" placeholder="https://…">
+                        <div id="thumbStatus" class="validation-status" style="display:none"></div>
+                        <img id="thumbPreview" class="thumb-preview" style="display:none" alt="Thumbnail preview">
+                    </div>
+                    <div class="form-field">
+                        <label class="form-label" for="coursePrice">Price (USD) <span style="color:var(--ruby-500)">*</span></label>
+                        <input type="number" id="coursePrice" class="form-input" required min="0" step="0.01" placeholder="29.99" style="max-width:200px">
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <div class="form-section__title">Access Settings</div>
+                    <div class="form-grid" style="gap:var(--s-4);margin-bottom:var(--s-4)">
+                        <div class="form-field">
+                            <label class="form-label" for="courseAccessType">Access Type</label>
+                            <select id="courseAccessType" class="form-select">
+                                <option value="sequential">Sequential (locked)</option>
+                                <option value="open">Open (any order)</option>
+                            </select>
+                        </div>
+                        <div class="form-field" style="justify-content:flex-end;padding-top:var(--s-6)">
+                            <label class="form-checkbox">
+                                <input type="checkbox" id="courseAllowSkip">
+                                Allow students to skip lessons
+                            </label>
+                        </div>
+                    </div>
+                    <label class="form-checkbox">
+                        <input type="checkbox" id="coursePublished">
+                        Publish this course (visible to students)
+                    </label>
+                </div>
+
+                <div class="modal__footer" style="padding:0;border:none;margin-top:var(--s-6)">
+                    <button type="button" class="btn btn--secondary" id="cancelCourseBtn">Cancel</button>
+                    <button type="submit" class="btn btn--primary" id="saveCourseBtn">Save Course</button>
+                </div>
+            </form>
         </div>
     </div>
+</div>
 
-    <!-- Module Form Modal -->
-    <div id="moduleFormModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="moduleModalTitle">Add Module</h2>
-                <span class="close">&times;</span>
+<!-- ══ Modules Modal ══ -->
+<div class="modal-backdrop" id="modulesModal">
+    <div class="modal modal--lg">
+        <div class="modal__header">
+            <div>
+                <h2 class="modal__title" id="modulesCourseName">Course Modules</h2>
             </div>
-            <div class="modal-body">
-                <form id="moduleForm">
-                    <input type="hidden" id="moduleCourseId">
-                    <input type="hidden" id="moduleId">
-                    
-                    <div class="form-group">
-                        <label for="moduleTitle">Module Title *</label>
-                        <input type="text" id="moduleTitle" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="moduleDescription">Module Description</label>
-                        <textarea id="moduleDescription" rows="3"></textarea>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="moduleOrder">Order *</label>
-                        <input type="number" id="moduleOrder" min="1" required>
-                    </div>
-
-                    <div class="form-actions">
-                        <button type="button" class="btn btn-secondary" id="cancelModuleBtn">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Save Module</button>
-                    </div>
-                </form>
+            <button class="modal__close" type="button"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal__body">
+            <div style="display:flex;justify-content:flex-end;margin-bottom:var(--s-5)">
+                <button class="btn btn--primary btn--sm" id="addModuleBtn">
+                    <i class="fas fa-plus"></i> Add Module
+                </button>
             </div>
+            <div id="modulesList"></div>
         </div>
     </div>
+</div>
 
-    <!-- Lesson Form Modal -->
-    <div id="lessonFormModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="lessonModalTitle">Add Lesson</h2>
-                <span class="close">&times;</span>
-            </div>
-            <div class="modal-body">
-                <form id="lessonForm">
-                    <input type="hidden" id="lessonCourseId">
-                    <input type="hidden" id="lessonModuleId">
-                    <input type="hidden" id="lessonId">
-                    
-                    <div class="form-group">
-                        <label for="lessonTitle">Lesson Title *</label>
-                        <input type="text" id="lessonTitle" required>
+<!-- ══ Module Form Modal ══ -->
+<div class="modal-backdrop" id="moduleFormModal">
+    <div class="modal">
+        <div class="modal__header">
+            <h2 class="modal__title" id="moduleModalTitle">Add Module</h2>
+            <button class="modal__close" type="button"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal__body">
+            <form id="moduleForm">
+                <input type="hidden" id="moduleId">
+                <input type="hidden" id="moduleCourseId">
+                <div class="form-field" style="margin-bottom:var(--s-4)">
+                    <label class="form-label" for="moduleTitle">Module Title <span style="color:var(--ruby-500)">*</span></label>
+                    <input type="text" id="moduleTitle" class="form-input" required placeholder="e.g. Introduction to JavaScript">
+                </div>
+                <div class="form-field" style="margin-bottom:var(--s-4)">
+                    <label class="form-label" for="moduleDescription">Description</label>
+                    <textarea id="moduleDescription" class="form-textarea" placeholder="Brief overview of this module…"></textarea>
+                </div>
+                <div class="form-field" style="margin-bottom:var(--s-6)">
+                    <label class="form-label" for="moduleOrder">Order</label>
+                    <input type="number" id="moduleOrder" class="form-input" min="1" required style="max-width:120px">
+                </div>
+                <div class="modal__footer" style="padding:0;border:none">
+                    <button type="button" class="btn btn--secondary" id="cancelModuleBtn">Cancel</button>
+                    <button type="submit" class="btn btn--primary">Save Module</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ══ Lesson Form Modal ══ -->
+<div class="modal-backdrop" id="lessonFormModal">
+    <div class="modal">
+        <div class="modal__header">
+            <h2 class="modal__title" id="lessonModalTitle">Add Lesson</h2>
+            <button class="modal__close" type="button"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal__body">
+            <form id="lessonForm">
+                <input type="hidden" id="lessonId">
+                <input type="hidden" id="lessonCourseId">
+                <input type="hidden" id="lessonModuleId">
+
+                <div class="form-grid" style="gap:var(--s-4);margin-bottom:var(--s-4)">
+                    <div class="form-field">
+                        <label class="form-label" for="lessonTitle">Lesson Title <span style="color:var(--ruby-500)">*</span></label>
+                        <input type="text" id="lessonTitle" class="form-input" required placeholder="e.g. Variables & Data Types">
                     </div>
+                    <div class="form-field">
+                        <label class="form-label" for="lessonOrder">Order</label>
+                        <input type="number" id="lessonOrder" class="form-input" min="1" required>
+                    </div>
+                </div>
 
-                    <div class="form-group">
-                        <label for="lessonType">Lesson Type *</label>
-                        <select id="lessonType" required>
-                            <option value="text">Text</option>
+                <div class="form-grid" style="gap:var(--s-4);margin-bottom:var(--s-4)">
+                    <div class="form-field">
+                        <label class="form-label" for="lessonType">Lesson Type</label>
+                        <select id="lessonType" class="form-select">
+                            <option value="text">Text / Article</option>
                             <option value="video">Video</option>
-                            <option value="mixed">Mixed (Video + Text)</option>
+                            <option value="mixed">Video + Text</option>
                         </select>
                     </div>
-
-                    <div class="form-group" id="videoUrlGroup">
-                        <label for="lessonVideoUrl">Video URL</label>
-                        <input type="url" id="lessonVideoUrl" placeholder="https://youtube.com/watch?v=...">
-                        <small>YouTube, Vimeo, or direct video URL</small>
+                    <div class="form-field">
+                        <label class="form-label" for="lessonDuration">Duration (minutes)</label>
+                        <input type="number" id="lessonDuration" class="form-input" min="0" placeholder="e.g. 12">
                     </div>
+                </div>
 
-                    <div class="form-group" id="contentGroup">
-                        <label for="lessonContent">Lesson Content</label>
-                        <textarea id="lessonContent" rows="12" placeholder="Enter lesson content. Basic HTML supported."></textarea>
-                        <small>Use basic HTML tags for formatting</small>
-                    </div>
+                <div id="videoUrlGroup" class="form-field" style="margin-bottom:var(--s-4);display:none">
+                    <label class="form-label" for="lessonVideoUrl">Video URL <span style="color:var(--ruby-500)">*</span></label>
+                    <input type="url" id="lessonVideoUrl" class="form-input" placeholder="https://youtube.com/watch?v=…">
+                </div>
 
-                    <div class="form-group">
-                        <label for="lessonOrder">Order *</label>
-                        <input type="number" id="lessonOrder" min="1" required>
-                    </div>
+                <div id="contentGroup" class="form-field" style="margin-bottom:var(--s-4)">
+                    <label class="form-label" for="lessonContent">Lesson Content <span style="color:var(--ruby-500)">*</span></label>
+                    <textarea id="lessonContent" class="form-textarea" placeholder="Write your lesson content here. Supports Markdown." style="min-height:160px"></textarea>
+                </div>
 
-                    <div class="form-group">
-                        <label for="lessonDuration">Duration (minutes)</label>
-                        <input type="number" id="lessonDuration" min="0">
-                    </div>
+                <div class="form-field" style="margin-bottom:var(--s-6)">
+                    <label class="form-label" for="lessonAccessRule">Access Rule</label>
+                    <select id="lessonAccessRule" class="form-select">
+                        <option value="sequential">Sequential (must complete previous)</option>
+                        <option value="open">Open (always accessible)</option>
+                    </select>
+                </div>
 
-                    <div class="form-group">
-                        <label for="lessonAccessRule">Access Rule *</label>
-                        <select id="lessonAccessRule" required>
-                            <option value="sequential">Sequential (Must complete previous)</option>
-                            <option value="anytime">Anytime (No restrictions)</option>
-                            <option value="daily">Daily (One per day)</option>
-                            <option value="weekly">Weekly (One per week)</option>
-                            <option value="monthly">Monthly (One per month)</option>
-                        </select>
-                        <small>Control when students can access this lesson</small>
-                    </div>
-
-                    <div class="form-actions">
-                        <button type="button" class="btn btn-secondary" id="cancelLessonBtn">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Save Lesson</button>
-                    </div>
-                </form>
-            </div>
+                <div class="modal__footer" style="padding:0;border:none">
+                    <button type="button" class="btn btn--secondary" id="cancelLessonBtn">Cancel</button>
+                    <button type="submit" class="btn btn--primary">Save Lesson</button>
+                </div>
+            </form>
         </div>
     </div>
+</div>
 
-    <script type="module" src="../js/firebase-config.js"></script>
-    <script type="module" src="../js/auth.js"></script>
-    <script type="module" src="../js/admin.js"></script>
-    <script src="../js/animations.js"></script>
+<script type="module" src="../js/firebase-config.js"></script>
+<script type="module" src="../js/auth.js"></script>
+<script type="module" src="../js/admin.js"></script>
 </body>
 </html>
