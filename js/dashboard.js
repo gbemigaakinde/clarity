@@ -3,167 +3,172 @@ import { collection, query, where, getDocs, doc, getDoc } from 'https://www.gsta
 import { requireAuth } from './auth.js';
 import { transformImageUrl } from './image-utils.js';
 
-// Initialize dashboard
 async function initDashboard() {
     await requireAuth();
-    
+    setupNav();
+    loadProfile();
     loadEnrolledCourses();
-    loadUserProfile();
-    setupTabs();
 }
 
-// Setup tabs
-function setupTabs() {
-    const tabBtns = document.querySelectorAll('.tab-btn');
-    const tabContents = document.querySelectorAll('.tab-content');
-
-    tabBtns.forEach(btn => {
+function setupNav() {
+    document.querySelectorAll('.dashboard-nav__item').forEach(btn => {
         btn.addEventListener('click', () => {
-            const targetTab = btn.dataset.tab;
-
-            tabBtns.forEach(b => b.classList.remove('active'));
-            tabContents.forEach(c => c.classList.remove('active'));
-
-            btn.classList.add('active');
-            document.getElementById(targetTab + 'Tab').classList.add('active');
+            document.querySelectorAll('.dashboard-nav__item').forEach(b => b.classList.remove('is-active'));
+            document.querySelectorAll('.dashboard-section').forEach(s => s.classList.remove('is-active'));
+            btn.classList.add('is-active');
+            const target = btn.dataset.section;
+            document.getElementById(target)?.classList.add('is-active');
         });
     });
 }
 
-// Load enrolled courses
-async function loadEnrolledCourses() {
-    const grid = document.getElementById('enrolledCourses');
-    
-    try {
-        const enrollmentsRef = collection(db, 'enrollments');
-        const q = query(enrollmentsRef, where('userId', '==', auth.currentUser.uid));
-        const enrollmentsSnapshot = await getDocs(q);
+async function loadProfile() {
+    const user = auth.currentUser;
+    if (!user) return;
 
-        if (enrollmentsSnapshot.empty) {
+    const initial = user.email.charAt(0).toUpperCase();
+    const avatarEl = document.getElementById('profileAvatar');
+    const emailEl = document.getElementById('profileEmail');
+    const roleEl = document.getElementById('profileRole');
+
+    if (avatarEl) avatarEl.textContent = initial;
+    if (emailEl) emailEl.textContent = user.email;
+
+    try {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists() && roleEl) {
+            const role = userDoc.data().role || 'student';
+            roleEl.textContent = role.charAt(0).toUpperCase() + role.slice(1);
+        }
+    } catch {}
+
+    // Welcome section
+    const welcomeEl = document.getElementById('welcomeEmail');
+    if (welcomeEl) welcomeEl.textContent = user.email.split('@')[0];
+}
+
+async function loadEnrolledCourses() {
+    const grid = document.getElementById('enrolledCoursesGrid');
+    if (!grid) return;
+
+    const user = auth.currentUser;
+    if (!user) return;
+
+    grid.innerHTML = `<p class="loading-text" style="grid-column:1/-1">Loading your courses…</p>`;
+
+    try {
+        const enrollSnap = await getDocs(
+            query(collection(db, 'enrollments'), where('userId', '==', user.uid))
+        );
+
+        if (enrollSnap.empty) {
             grid.innerHTML = `
-                <div style="grid-column: 1/-1; text-align: center; padding: 3rem;">
-                    <i class="fas fa-book" style="font-size: 3rem; color: var(--text-secondary); margin-bottom: 1rem;"></i>
-                    <h3>No Courses Yet</h3>
-                    <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Start learning by enrolling in a course</p>
-                    <a href="courses.html" class="btn btn-primary">Browse Courses</a>
-                </div>
-            `;
+                <div class="empty-state" style="grid-column:1/-1">
+                    <div class="empty-state__icon"><i class="fas fa-book-open"></i></div>
+                    <h3 class="empty-state__title">No courses yet</h3>
+                    <p class="empty-state__desc">Browse our catalog and enroll in a course to get started.</p>
+                    <a href="courses.html" class="btn btn--primary">Browse Courses</a>
+                </div>`;
+
+            // Update stat
+            const statEl = document.getElementById('statCourses');
+            if (statEl) statEl.textContent = '0';
             return;
         }
 
-        const courseIds = [];
-        const enrollmentMap = {};
-        enrollmentsSnapshot.forEach((doc) => {
-            const enrollment = doc.data();
-            courseIds.push(enrollment.courseId);
-            enrollmentMap[enrollment.courseId] = enrollment;
-        });
+        const enrollments = [];
+        enrollSnap.forEach(d => enrollments.push(d.data()));
+
+        // Stat
+        const statEl = document.getElementById('statCourses');
+        if (statEl) statEl.textContent = enrollments.length;
 
         grid.innerHTML = '';
-        for (const courseId of courseIds) {
-            try {
-                const courseDoc = await getDoc(doc(db, 'courses', courseId));
-                if (courseDoc.exists()) {
-                    const course = { id: courseDoc.id, ...courseDoc.data() };
-                    const enrollment = enrollmentMap[courseId];
-                    
-                    const progressRef = collection(db, 'progress');
-                    const progressQuery = query(
-                        progressRef,
-                        where('userId', '==', auth.currentUser.uid),
-                        where('courseId', '==', courseId)
-                    );
-                    const progressSnapshot = await getDocs(progressQuery);
-                    
-                    let progress = 0;
-                    let lastModuleId = null;
-                    let lastLessonId = null;
-                    
-                    if (!progressSnapshot.empty) {
-                        const progressData = progressSnapshot.docs[0].data();
-                        
-                        // Calculate progress based on completed lessons
-                        const totalLessons = course.modules?.reduce((sum, mod) => 
-                            sum + (mod.lessons?.length || 0), 0) || 1;
-                        
-                        const completedLessonsCount = Object.values(progressData.completedLessons || {})
-                            .reduce((sum, arr) => sum + arr.length, 0);
-                        
-                        progress = Math.round((completedLessonsCount / totalLessons) * 100);
-                        lastModuleId = progressData.currentModule;
-                        lastLessonId = progressData.currentLesson;
-                    }
 
-                    const courseCard = createEnrolledCourseCard(course, progress, lastModuleId, lastLessonId);
-                    grid.appendChild(courseCard);
+        let completedCount = 0;
+        let totalProgressSum = 0;
+
+        for (const enrollment of enrollments) {
+            try {
+                const courseDoc = await getDoc(doc(db, 'courses', enrollment.courseId));
+                if (!courseDoc.exists()) continue;
+
+                const course = { id: courseDoc.id, ...courseDoc.data() };
+                const totalLessons = course.modules?.reduce((s, m) => s + (m.lessons?.length || 0), 0) || 1;
+
+                // Get progress
+                const progSnap = await getDocs(
+                    query(collection(db, 'progress'),
+                        where('userId', '==', user.uid),
+                        where('courseId', '==', enrollment.courseId))
+                );
+
+                let progress = 0;
+                if (!progSnap.empty) {
+                    const pd = progSnap.docs[0].data();
+                    const completed = Object.values(pd.completedLessons || {}).reduce((s, a) => s + a.length, 0);
+                    progress = Math.min(100, Math.round((completed / totalLessons) * 100));
                 }
-            } catch (error) {
-                console.error('Error loading course:', courseId, error);
+
+                totalProgressSum += progress;
+                if (progress >= 100) completedCount++;
+
+                grid.appendChild(buildEnrolledCard(course, progress));
+            } catch (err) {
+                console.error(err);
             }
         }
-    } catch (error) {
-        console.error('Error loading enrolled courses:', error);
-        grid.innerHTML = '<p class="loading">Error loading your courses.</p>';
+
+        // Completed stat
+        const completedEl = document.getElementById('statCompleted');
+        if (completedEl) completedEl.textContent = completedCount;
+
+        // Avg progress
+        const avgEl = document.getElementById('statAvgProgress');
+        if (avgEl) avgEl.textContent = enrollments.length
+            ? Math.round(totalProgressSum / enrollments.length) + '%'
+            : '0%';
+
+    } catch (err) {
+        console.error(err);
+        grid.innerHTML = '<p class="loading-text">Error loading your courses.</p>';
     }
 }
 
-function createEnrolledCourseCard(course, progress, lastModuleId, lastLessonId) {
-    const card = document.createElement('div');
+function buildEnrolledCard(course, progress) {
+    const card = document.createElement('a');
     card.className = 'course-card';
+    card.href = `lesson.html?courseId=${course.id}`;
 
-    const moduleCount = course.modules ? course.modules.length : 0;
-
-    // Transform the thumbnail URL
-    const thumbnailUrl = transformImageUrl(course.thumbnail || '');
+    const thumb = transformImageUrl(course.thumbnail || '');
 
     card.innerHTML = `
-        <img src="${thumbnailUrl}" 
-             alt="${course.title}"
-             onerror="this.onerror=null; this.src='https://via.placeholder.com/400x200/4F46E5/FFFFFF?text=${encodeURIComponent(course.title)}'; this.style.opacity='0.7';">
-        <div class="course-card-content">
-            <span class="course-category">${course.category}</span>
-            <h3>${course.title}</h3>
-            <p>${course.description.substring(0, 100)}...</p>
-            <div style="margin-top: 1rem;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                    <span style="font-size: 0.875rem; color: var(--text-secondary);">Progress</span>
-                    <span style="font-size: 0.875rem; font-weight: 600;">${progress}%</span>
+        <div class="course-card__thumb">
+            <img src="${thumb}" alt="${course.title}"
+                 onerror="this.onerror=null;this.src='https://via.placeholder.com/640x360/111118/FFFFFF?text=${encodeURIComponent(course.title)}';this.style.opacity='0.5'">
+            <div class="course-card__thumb-overlay"></div>
+        </div>
+        <div class="course-card__body">
+            <span class="badge badge--category">${course.category}</span>
+            <h3 class="course-card__title">${course.title}</h3>
+            <p class="course-card__desc">${course.description}</p>
+            <div style="margin-top:auto;padding-top:var(--s-4)">
+                <div class="progress-label" style="margin-bottom:var(--s-2)">
+                    <span>Progress</span>
+                    <strong style="color:${progress >= 100 ? 'var(--jade-600)' : 'var(--ink-700)'}">${progress}%</strong>
                 </div>
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width: ${progress}%;"></div>
+                <div class="progress-track">
+                    <div class="progress-fill" style="width:${progress}%"></div>
                 </div>
             </div>
-            <div style="margin-top: 0.75rem; font-size: 0.875rem; color: var(--text-secondary);">
-                <i class="fas fa-layer-group"></i> ${moduleCount} modules
+            <div style="margin-top:var(--s-4)">
+                <span class="btn btn--primary btn--sm btn--full">
+                    ${progress > 0 ? '<i class="fas fa-play"></i> Continue' : '<i class="fas fa-play"></i> Start Course'}
+                </span>
             </div>
-            <a href="lesson.html?courseId=${course.id}" class="btn btn-primary btn-full" style="margin-top: 1rem;">
-                ${progress > 0 ? 'Continue Learning' : 'Start Course'}
-            </a>
         </div>
     `;
-
     return card;
 }
 
-// Load user profile
-async function loadUserProfile() {
-    const userEmail = document.getElementById('userEmail');
-    const userRole = document.getElementById('userRole');
-
-    if (auth.currentUser) {
-        userEmail.textContent = auth.currentUser.email;
-
-        try {
-            const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
-            if (userDoc.exists()) {
-                const role = userDoc.data().role || 'student';
-                userRole.textContent = role.charAt(0).toUpperCase() + role.slice(1);
-            }
-        } catch (error) {
-            console.error('Error loading user profile:', error);
-        }
-    }
-}
-
-// Initialize
 document.addEventListener('DOMContentLoaded', initDashboard);
