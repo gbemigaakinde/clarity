@@ -4,6 +4,15 @@ import { transformImageUrl } from './image-utils.js';
 
 let allCourses = [];
 
+const revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+        if (e.isIntersecting) {
+            e.target.classList.add('is-visible');
+            revealObserver.unobserve(e.target);
+        }
+    });
+}, { threshold: 0.08, rootMargin: '0px 0px -20px 0px' });
+
 async function loadCourses() {
     const grid = document.getElementById('coursesGrid');
     if (!grid) return;
@@ -13,7 +22,6 @@ async function loadCourses() {
     try {
         const ref = collection(db, 'courses');
         let snap;
-
         try {
             snap = await getDocs(query(ref, where('published', '==', true), orderBy('title')));
         } catch {
@@ -51,7 +59,7 @@ function renderCourses(courses, grid) {
             <div class="empty-state" style="grid-column:1/-1">
                 <div class="empty-state__icon"><i class="fas fa-search"></i></div>
                 <h3 class="empty-state__title">No courses found</h3>
-                <p class="empty-state__desc">Try adjusting your search or filter to find what you're looking for.</p>
+                <p class="empty-state__desc">Try adjusting your search or filter.</p>
             </div>`;
         return;
     }
@@ -59,12 +67,16 @@ function renderCourses(courses, grid) {
     grid.innerHTML = '';
     courses.forEach((course, i) => {
         const card = buildCard(course);
+        // Only add staggered reveal to first 6 cards
         if (i < 6) {
             card.classList.add('reveal');
             if (i > 0) card.classList.add(`reveal--delay-${Math.min(i, 4)}`);
         }
         grid.appendChild(card);
     });
+
+    // Observe cards AFTER they are in the DOM
+    grid.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
 }
 
 function buildCard(course) {
@@ -120,16 +132,7 @@ function filterCourses() {
     });
 
     renderCourses(filtered, grid);
-
-    // re-run reveal observer on new elements
-    document.querySelectorAll('.course-card.reveal').forEach(el => {
-        revealObserver.observe(el);
-    });
 }
-
-const revealObserver = new IntersectionObserver(entries => {
-    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('is-visible'); revealObserver.unobserve(e.target); }});
-}, { threshold: 0.1 });
 
 document.addEventListener('DOMContentLoaded', () => {
     loadCourses();
