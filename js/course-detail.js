@@ -7,280 +7,289 @@ let courseId = null;
 let courseData = null;
 let isEnrolled = false;
 
-// Get course ID from URL
 function getCourseId() {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('id');
+    return new URLSearchParams(window.location.search).get('id');
 }
 
-// Load course details
-async function loadCourseDetails() {
+async function init() {
     courseId = getCourseId();
-    if (!courseId) {
-        window.location.href = 'courses.html';
-        return;
-    }
-
-    const contentDiv = document.getElementById('courseContent');
+    if (!courseId) { window.location.href = 'courses.html'; return; }
 
     try {
-        const courseDoc = await getDoc(doc(db, 'courses', courseId));
-        
-        if (!courseDoc.exists()) {
-            contentDiv.innerHTML = '<div class="container"><p class="loading">Course not found.</p></div>';
-            return;
-        }
+        const snap = await getDoc(doc(db, 'courses', courseId));
+        if (!snap.exists()) { showNotFound(); return; }
+        courseData = { id: snap.id, ...snap.data() };
 
-        courseData = { id: courseDoc.id, ...courseDoc.data() };
-
-        // Check if user is enrolled
-        if (auth.currentUser) {
-            await checkEnrollment();
-        }
-
-        displayCourseDetails();
-    } catch (error) {
-        console.error('Error loading course:', error);
-        contentDiv.innerHTML = '<div class="container"><p class="loading">Error loading course details.</p></div>';
+        if (auth.currentUser) await checkEnrollment();
+        render();
+    } catch (err) {
+        console.error(err);
+        document.getElementById('courseContent').innerHTML =
+            '<div class="container"><p class="loading-text">Error loading course.</p></div>';
     }
 }
 
 async function checkEnrollment() {
     try {
-        const enrollmentsRef = collection(db, 'enrollments');
         const q = query(
-            enrollmentsRef,
+            collection(db, 'enrollments'),
             where('userId', '==', auth.currentUser.uid),
             where('courseId', '==', courseId)
         );
-        const querySnapshot = await getDocs(q);
-        isEnrolled = !querySnapshot.empty;
-    } catch (error) {
-        console.error('Error checking enrollment:', error);
-    }
+        const snap = await getDocs(q);
+        isEnrolled = !snap.empty;
+    } catch {}
 }
 
-function displayCourseDetails() {
-    const contentDiv = document.getElementById('courseContent');
-    
-    // Calculate totals from modules
-    const moduleCount = courseData.modules ? courseData.modules.length : 0;
-    const lessonCount = courseData.modules 
-        ? courseData.modules.reduce((sum, mod) => sum + (mod.lessons?.length || 0), 0)
-        : 0;
-    const totalDuration = courseData.modules 
-        ? courseData.modules.reduce((sum, mod) => {
-            const modDuration = mod.lessons?.reduce((s, l) => s + (l.duration || 0), 0) || 0;
-            return sum + modDuration;
-        }, 0)
-        : 0;
+function showNotFound() {
+    document.getElementById('courseContent').innerHTML =
+        '<div class="container" style="padding:4rem 0"><p class="loading-text">Course not found.</p></div>';
+}
 
-    const enrollButton = isEnrolled 
-        ? '<a href="lesson.html?courseId=' + courseId + '" class="btn btn-primary btn-full">Continue Learning</a>'
-        : '<button id="enrollBtn" class="btn btn-primary btn-full">Enroll Now - $' + courseData.price + '</button>';
+function render() {
+    const content = document.getElementById('courseContent');
+    const modules = courseData.modules || [];
+    const moduleCount = modules.length;
+    const lessonCount = modules.reduce((s, m) => s + (m.lessons?.length || 0), 0);
+    const totalDuration = modules.reduce((s, m) =>
+        s + (m.lessons?.reduce((ls, l) => ls + (l.duration || 0), 0) || 0), 0);
 
-    // Build curriculum HTML from modules
-    const curriculumHTML = courseData.modules && courseData.modules.length > 0
-        ? courseData.modules.sort((a, b) => a.order - b.order).map((module, modIndex) => {
-            const moduleLessons = module.lessons || [];
-            const lessonsHTML = moduleLessons.sort((a, b) => a.order - b.order).map((lesson, lessonIndex) => {
-                let typeIcon = 'fa-video';
-                if (lesson.type === 'text') {
-                    typeIcon = 'fa-file-alt';
-                } else if (lesson.type === 'mixed') {
-                    typeIcon = 'fa-layer-group';
-                }
-                
-                const durationText = lesson.duration ? `${lesson.duration} min` : '';
-                
-                return `
-                    <li class="curriculum-item" style="margin-left: 2rem;">
-                        <div class="lesson-info">
-                            <h5 style="font-weight: 500; font-size: 0.95rem;">
-                                <i class="fas ${typeIcon}"></i> ${lesson.order}. ${lesson.title}
-                            </h5>
-                            ${durationText ? `<span style="font-size: 0.875rem;">${durationText}</span>` : ''}
-                        </div>
-                        ${isEnrolled ? '<i class="fas fa-play-circle"></i>' : '<i class="fas fa-lock"></i>'}
-                    </li>
-                `;
-            }).join('');
-            
-            return `
-                <li class="curriculum-item" style="background: #f8f9fa; margin-bottom: 0.5rem;">
-                    <div class="lesson-info">
-                        <h4><i class="fas fa-layer-group"></i> Module ${module.order}: ${module.title}</h4>
-                        ${module.description ? `<p style="margin: 0.25rem 0 0 0; color: var(--text-secondary); font-size: 0.875rem;">${module.description}</p>` : ''}
-                    </div>
-                    <span style="font-size: 0.875rem; color: var(--text-secondary);">${moduleLessons.length} lessons</span>
-                </li>
-                ${lessonsHTML}
-            `;
-        }).join('')
-        : '<li class="curriculum-item"><p>No modules or lessons available yet.</p></li>';
+    const thumb = transformImageUrl(courseData.thumbnail || '');
 
-    // Transform the thumbnail URL
-    const thumbnailUrl = transformImageUrl(courseData.thumbnail || '');
+    document.title = `${courseData.title} — Clarity Academy`;
 
-    contentDiv.innerHTML = `
-        <section class="course-detail-header">
+    content.innerHTML = `
+        <div class="course-detail-header">
             <div class="container">
-                <h1>${courseData.title}</h1>
-                <p>${courseData.description}</p>
-                <div class="course-detail-meta">
-                    <span>
-                        <i class="fas fa-user"></i>
-                        ${courseData.instructor}
-                    </span>
-                    <span>
-                        <i class="fas fa-folder"></i>
-                        ${courseData.category}
-                    </span>
-                    <span>
-                        <i class="fas fa-layer-group"></i>
-                        ${moduleCount} Modules
-                    </span>
-                    <span>
-                        <i class="fas fa-play-circle"></i>
-                        ${lessonCount} Lessons
-                    </span>
-                    ${totalDuration > 0 ? `<span>
-                        <i class="fas fa-clock"></i>
-                        ${totalDuration} Minutes
-                    </span>` : ''}
+                <div class="course-detail-header__inner">
+                    <div>
+                        <div class="course-detail-header__breadcrumb">
+                            <a href="courses.html">Courses</a>
+                            <i class="fas fa-chevron-right" style="font-size:10px"></i>
+                            <span>${courseData.category}</span>
+                        </div>
+                        <span class="badge badge--cobalt course-detail-header__category">${courseData.category}</span>
+                        <h1>${courseData.title}</h1>
+                        <p class="course-detail-header__desc">${courseData.description}</p>
+                        <div class="course-detail-meta">
+                            <span class="course-detail-meta__item">
+                                <i class="fas fa-user"></i> ${courseData.instructor}
+                            </span>
+                            <span class="course-detail-meta__item">
+                                <i class="fas fa-layer-group"></i> ${moduleCount} modules
+                            </span>
+                            <span class="course-detail-meta__item">
+                                <i class="fas fa-play-circle"></i> ${lessonCount} lessons
+                            </span>
+                            ${totalDuration ? `<span class="course-detail-meta__item"><i class="fas fa-clock"></i> ${totalDuration} min</span>` : ''}
+                        </div>
+                    </div>
+                    <div id="purchaseCardWrap">
+                        ${buildPurchaseCard(thumb)}
+                    </div>
                 </div>
             </div>
-        </section>
+        </div>
 
-        <section class="course-detail">
+        <div class="course-detail-body">
             <div class="container">
-                <div class="course-detail-content">
-                    <div class="course-main">
-                        <h2>What You'll Learn</h2>
-                        <p>${courseData.description}</p>
-
-                        <h2 style="margin-top: 2rem;">Course Curriculum</h2>
-                        <ul class="curriculum-list">
-                            ${curriculumHTML}
-                        </ul>
+                <div class="course-detail-layout">
+                    <div class="course-detail-main">
+                        <div class="course-section reveal">
+                            <h2>About this course</h2>
+                            <p style="color:var(--ink-600);line-height:1.75">${courseData.description}</p>
+                        </div>
+                        <div class="course-section reveal reveal--delay-1">
+                            <h2>Curriculum — ${moduleCount} modules, ${lessonCount} lessons</h2>
+                            ${buildCurriculum(modules)}
+                        </div>
                     </div>
-
-                    <div class="course-sidebar">
-                        ${isEnrolled ? '<span class="enrolled-badge"><i class="fas fa-check-circle"></i> Enrolled</span>' : ''}
-                        <img src="${thumbnailUrl}" 
-                             alt="${courseData.title}" 
-                             style="width: 100%; border-radius: 0.5rem; margin-bottom: 1rem;"
-                             onerror="this.onerror=null; this.src='https://via.placeholder.com/400x300/4F46E5/FFFFFF?text=${encodeURIComponent(courseData.title)}'; this.style.opacity='0.7';">
-                        <h3 style="margin-bottom: 0.5rem;">$${courseData.price}</h3>
-                        ${enrollButton}
-                        
-                        <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
-                            <h4>This course includes:</h4>
-                            <ul style="list-style: none; margin-top: 1rem;">
-                                <li style="margin-bottom: 0.5rem;">
-                                    <i class="fas fa-layer-group"></i>
-                                    ${moduleCount} modules
-                                </li>
-                                <li style="margin-bottom: 0.5rem;">
-                                    <i class="fas fa-book-open"></i>
-                                    ${lessonCount} lessons
-                                </li>
-                                ${totalDuration > 0 ? `<li style="margin-bottom: 0.5rem;">
-                                    <i class="fas fa-clock"></i>
-                                    ${totalDuration} minutes of content
-                                </li>` : ''}
-                                <li style="margin-bottom: 0.5rem;">
-                                    <i class="fas fa-mobile-alt"></i>
-                    Access on mobile and desktop
-                                </li>
-                                <li style="margin-bottom: 0.5rem;">
-                                    <i class="fas fa-infinity"></i>
-                                    Lifetime access
-                                </li>
-                            </ul>
+                    <div>
+                        <div id="purchaseCardSide" class="purchase-card" style="display:none">
+                            ${buildPurchaseCardBody()}
                         </div>
                     </div>
                 </div>
             </div>
-        </section>
+        </div>
     `;
 
-    const enrollBtn = document.getElementById('enrollBtn');
-    if (enrollBtn) {
-        enrollBtn.addEventListener('click', handleEnrollment);
+    // Wire enroll button(s)
+    document.querySelectorAll('.js-enroll-btn').forEach(btn => {
+        btn.addEventListener('click', handleEnroll);
+    });
+
+    // Responsive: show side card only on desktop header hidden
+    handlePurchaseCardLayout();
+    window.addEventListener('resize', handlePurchaseCardLayout);
+
+    // Scroll reveal
+    document.querySelectorAll('.reveal').forEach(el => {
+        new IntersectionObserver(entries => {
+            entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('is-visible'); });
+        }, { threshold: 0.1 }).observe(el);
+    });
+}
+
+function handlePurchaseCardLayout() {
+    const headerCard = document.getElementById('purchaseCardWrap');
+    const sideCard = document.getElementById('purchaseCardSide');
+    if (!headerCard || !sideCard) return;
+    if (window.innerWidth <= 1024) {
+        headerCard.style.display = 'none';
+        sideCard.style.display = 'block';
+    } else {
+        headerCard.style.display = 'block';
+        sideCard.style.display = 'block';
     }
 }
 
-async function handleEnrollment() {
+function buildPurchaseCard(thumb) {
+    return `
+        <div class="purchase-card">
+            <div class="purchase-card__thumb">
+                <img src="${thumb}" alt="${courseData.title}"
+                     onerror="this.onerror=null;this.src='https://via.placeholder.com/640x360/111118/FFFFFF?text=${encodeURIComponent(courseData.title)}'">
+            </div>
+            <div class="purchase-card__body">
+                ${buildPurchaseCardBody()}
+            </div>
+        </div>
+    `;
+}
+
+function buildPurchaseCardBody() {
+    const modules = courseData.modules || [];
+    const lessonCount = modules.reduce((s, m) => s + (m.lessons?.length || 0), 0);
+    const totalDuration = modules.reduce((s, m) =>
+        s + (m.lessons?.reduce((ls, l) => ls + (l.duration || 0), 0) || 0), 0);
+
+    if (isEnrolled) {
+        return `
+            <div class="purchase-card__enrolled">
+                <i class="fas fa-check-circle"></i> You're enrolled
+            </div>
+            <a href="lesson.html?courseId=${courseId}" class="btn btn--primary btn--full btn--lg">
+                <i class="fas fa-play"></i> Continue Learning
+            </a>
+            ${buildIncludes(lessonCount, totalDuration)}
+        `;
+    }
+
+    return `
+        <div class="purchase-card__price">$${courseData.price}</div>
+        <button class="btn btn--primary btn--full btn--lg js-enroll-btn" id="enrollBtn">
+            Enroll Now
+        </button>
+        <p style="text-align:center;font-size:var(--text-xs);color:var(--ink-400);margin-top:var(--s-3)">
+            30-day money-back guarantee
+        </p>
+        ${buildIncludes(lessonCount, totalDuration)}
+    `;
+}
+
+function buildIncludes(lessonCount, totalDuration) {
+    return `
+        <div class="purchase-card__includes">
+            <h4>This course includes</h4>
+            <div class="purchase-card__include-item"><i class="fas fa-layer-group"></i> ${courseData.modules?.length || 0} structured modules</div>
+            <div class="purchase-card__include-item"><i class="fas fa-book-open"></i> ${lessonCount} lessons</div>
+            ${totalDuration ? `<div class="purchase-card__include-item"><i class="fas fa-clock"></i> ${totalDuration} min of content</div>` : ''}
+            <div class="purchase-card__include-item"><i class="fas fa-mobile-alt"></i> Access on any device</div>
+            <div class="purchase-card__include-item"><i class="fas fa-infinity"></i> Lifetime access</div>
+        </div>
+    `;
+}
+
+function buildCurriculum(modules) {
+    if (!modules.length) return '<p style="color:var(--ink-400);font-size:var(--text-sm)">No curriculum available yet.</p>';
+
+    return modules.sort((a, b) => a.order - b.order).map(mod => {
+        const lessons = (mod.lessons || []).sort((a, b) => a.order - b.order);
+        return `
+            <div class="curriculum-module">
+                <div class="curriculum-module__header">
+                    <div class="curriculum-module__title">
+                        <i class="fas fa-layer-group" style="color:var(--ink-400)"></i>
+                        Module ${mod.order}: ${mod.title}
+                    </div>
+                    <span class="curriculum-module__count">${lessons.length} lessons</span>
+                </div>
+                ${lessons.map(lesson => {
+                    let icon = 'fa-video';
+                    if (lesson.type === 'text') icon = 'fa-file-alt';
+                    if (lesson.type === 'mixed') icon = 'fa-layer-group';
+                    return `
+                        <div class="curriculum-lesson">
+                            <i class="fas ${icon} curriculum-lesson__icon"></i>
+                            <span class="curriculum-lesson__title">${lesson.order}. ${lesson.title}</span>
+                            ${lesson.duration ? `<span class="curriculum-lesson__duration">${lesson.duration} min</span>` : ''}
+                            ${isEnrolled
+                                ? '<i class="fas fa-play-circle curriculum-lesson__lock" style="color:var(--cobalt-400)"></i>'
+                                : '<i class="fas fa-lock curriculum-lesson__lock"></i>'}
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+    }).join('');
+}
+
+async function handleEnroll() {
     if (!auth.currentUser) {
-        alert('Please login to enroll in this course.');
         window.location.href = 'login.html';
         return;
     }
 
-    const enrollBtn = document.getElementById('enrollBtn');
-    enrollBtn.disabled = true;
-    enrollBtn.textContent = 'Enrolling...';
+    const btn = document.getElementById('enrollBtn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enrolling…'; }
 
     try {
-        // Create enrollment record
         await addDoc(collection(db, 'enrollments'), {
             userId: auth.currentUser.uid,
-            courseId: courseId,
+            courseId,
             enrolledAt: new Date(),
             progress: 0,
             completedLessons: []
         });
 
-        // Ensure course has modules and lessons
-        if (!courseData.modules || courseData.modules.length === 0) {
-            throw new Error('This course has no content yet');
-        }
+        const modules = (courseData.modules || []).sort((a, b) => a.order - b.order);
+        if (!modules.length) throw new Error('No content yet');
+        const firstLesson = (modules[0].lessons || []).sort((a, b) => a.order - b.order)[0];
+        if (!firstLesson) throw new Error('No lessons in first module');
 
-        // Get first module and lesson
-        const sortedModules = courseData.modules.sort((a, b) => a.order - b.order);
-        const firstModule = sortedModules[0];
-        
-        if (!firstModule) {
-            throw new Error('No modules found');
-        }
-
-        const sortedLessons = (firstModule.lessons || []).sort((a, b) => a.order - b.order);
-        const firstLesson = sortedLessons[0];
-        
-        if (!firstLesson) {
-            throw new Error('No lessons found in first module');
-        }
-
-        // Create initial progress record
         await addDoc(collection(db, 'progress'), {
             userId: auth.currentUser.uid,
-            courseId: courseId,
+            courseId,
             completedModules: [],
             completedLessons: {},
-            currentModule: firstModule.id,
+            currentModule: modules[0].id,
             currentLesson: firstLesson.id,
             lastAccessedAt: new Date(),
-            accessHistory: [],
             updatedAt: new Date()
         });
 
-        console.log('Enrollment successful. Redirecting to lesson page...');
-        alert('Successfully enrolled! Redirecting to course...');
-        
-        // Small delay to ensure Firestore writes are complete
-        setTimeout(() => {
-            window.location.href = `lesson.html?courseId=${courseId}`;
-        }, 500);
-    } catch (error) {
-        console.error('Error enrolling:', error);
-        alert('Error enrolling in course: ' + error.message);
-        enrollBtn.disabled = false;
-        enrollBtn.textContent = `Enroll Now - $${courseData.price}`;
+        showToast('Enrolled! Taking you to the course…', 'success');
+        setTimeout(() => { window.location.href = `lesson.html?courseId=${courseId}`; }, 1000);
+    } catch (err) {
+        console.error(err);
+        showToast('Could not enroll: ' + err.message, 'error');
+        if (btn) { btn.disabled = false; btn.textContent = 'Enroll Now'; }
     }
 }
 
-// Initialize
-onAuthStateChanged(auth, () => {
-    loadCourseDetails();
-});
+function showToast(msg, type = 'info') {
+    let region = document.querySelector('.toast-region');
+    if (!region) {
+        region = document.createElement('div');
+        region.className = 'toast-region';
+        document.body.appendChild(region);
+    }
+    const toast = document.createElement('div');
+    toast.className = `toast toast--${type}`;
+    toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i> ${msg}`;
+    region.appendChild(toast);
+    setTimeout(() => { toast.classList.add('toast--out'); setTimeout(() => toast.remove(), 300); }, 4000);
+}
+
+onAuthStateChanged(auth, () => { init(); });
