@@ -3,93 +3,136 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Clarity Academy</title>
+    <title>Dashboard — Clarity Academy</title>
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <nav class="navbar">
-        <div class="container nav-container">
-            <a href="index.html" class="logo">Clarity Academy</a>
-            <ul class="nav-links">
-                <li><a href="courses.html">Courses</a></li>
-                <li><a href="dashboard.html" id="dashboardLink">Dashboard</a></li>
-                <li><a href="admin/index.html" id="adminLink" style="display: none;">Admin</a></li>
-                <li><a href="login.html" id="loginLink" style="display: none;">Login</a></li>
-                <li><a href="#" id="logoutLink">Logout</a></li>
-            </ul>
-        </div>
-    </nav>
 
-    <section class="page-header">
-        <div class="container">
-            <h1>My Dashboard</h1>
-            <p>Track your learning progress</p>
-        </div>
-    </section>
+<nav class="nav" id="mainNav">
+    <div class="container nav__inner">
+        <a href="index.html" class="nav__logo">
+            <div class="nav__logo-mark">CA</div>
+            Clarity Academy
+        </a>
+        <ul class="nav__links">
+            <li><a href="courses.html" class="nav__link">Courses</a></li>
+            <li><a href="dashboard.html" class="nav__link" id="dashboardLink" style="color:var(--ink-900);font-weight:700">Dashboard</a></li>
+            <li><a href="admin/index.html" class="nav__link" id="adminLink" style="display:none">Admin</a></li>
+            <li><a href="login.html" class="nav__link" id="loginLink" style="display:none">Sign In</a></li>
+            <li><a href="register.html" class="nav__link nav__link--cta" id="registerLink" style="display:none">Get Started</a></li>
+            <li><a href="#" class="nav__link" id="logoutLink">Sign Out</a></li>
+        </ul>
+    </div>
+</nav>
 
-    <section class="dashboard-section">
-        <div class="container">
-            <div class="dashboard-tabs">
-                <button class="tab-btn active" data-tab="enrolled">My Courses</button>
-                <button class="tab-btn" data-tab="profile">Profile</button>
-            </div>
+<div class="container">
+    <div class="dashboard-layout">
 
-            <div class="tab-content active" id="enrolledTab">
-                <div id="enrolledCourses" class="courses-grid">
-                    <div class="loading">Loading your courses...</div>
-                </div>
-            </div>
+        <!-- Sidebar nav -->
+        <nav class="dashboard-nav" aria-label="Dashboard navigation">
+            <div class="dashboard-nav__title">Navigation</div>
+            <button class="dashboard-nav__item is-active" data-section="myCoursesSection">
+                <i class="fas fa-book-open"></i> My Courses
+            </button>
+            <button class="dashboard-nav__item" data-section="profileSection">
+                <i class="fas fa-user"></i> Profile
+            </button>
+        </nav>
 
-            <div class="tab-content" id="profileTab">
-                <div class="profile-card">
-                    <h2>Profile Settings</h2>
-                    <div class="profile-info">
-                        <div class="info-group">
-                            <label>Email</label>
-                            <p id="userEmail">Loading...</p>
-                        </div>
-                        <div class="info-group">
-                            <label>Account Type</label>
-                            <p id="userRole">Student</p>
-                        </div>
+        <!-- Main content -->
+        <main class="dashboard-content">
+
+            <!-- My Courses -->
+            <section class="dashboard-section is-active" id="myCoursesSection">
+
+                <!-- Welcome card -->
+                <div class="dashboard-welcome">
+                    <div class="dashboard-welcome__inner">
+                        <h2>Welcome back, <span id="welcomeEmail">Learner</span> 👋</h2>
+                        <p>Keep up the great work. Your next lesson is waiting.</p>
+                        <a href="courses.html" class="btn btn--white btn--sm">
+                            <i class="fas fa-search"></i> Browse more courses
+                        </a>
                     </div>
                 </div>
+
+                <!-- Stats row -->
+                <div class="dashboard-stats">
+                    <div class="dash-stat">
+                        <div class="dash-stat__num" id="statCourses">—</div>
+                        <div class="dash-stat__label">Enrolled Courses</div>
+                    </div>
+                    <div class="dash-stat">
+                        <div class="dash-stat__num" id="statCompleted">—</div>
+                        <div class="dash-stat__label">Completed</div>
+                    </div>
+                    <div class="dash-stat">
+                        <div class="dash-stat__num" id="statAvgProgress">—</div>
+                        <div class="dash-stat__label">Avg Progress</div>
+                    </div>
+                </div>
+
+                <h2 style="font-size:var(--text-md);font-weight:var(--fw-bold);color:var(--ink-900);margin-bottom:var(--s-5)">Your courses</h2>
+                <div id="enrolledCoursesGrid" class="courses-grid"></div>
+            </section>
+
+            <!-- Profile -->
+            <section class="dashboard-section" id="profileSection">
+                <div class="profile-card">
+                    <div class="profile-card__avatar" id="profileAvatar">?</div>
+                    <h2>Account Details</h2>
+                    <div class="profile-field">
+                        <div class="profile-field__label">Email Address</div>
+                        <div class="profile-field__value" id="profileEmail">Loading…</div>
+                    </div>
+                    <div class="profile-field">
+                        <div class="profile-field__label">Account Type</div>
+                        <div class="profile-field__value" id="profileRole">Student</div>
+                    </div>
+                    <div class="profile-field">
+                        <div class="profile-field__label">Member Since</div>
+                        <div class="profile-field__value">—</div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+</div>
+
+<footer class="footer">
+    <div class="container">
+        <div class="footer__grid">
+            <div class="footer__brand">
+                <div class="footer__logo">
+                    <div class="footer__logo-mark">CA</div>
+                    Clarity Academy
+                </div>
+                <p class="footer__tagline">Professional online learning for ambitious people.</p>
+            </div>
+            <div class="footer__col">
+                <h4>Learn</h4>
+                <ul>
+                    <li><a href="courses.html">All Courses</a></li>
+                </ul>
+            </div>
+            <div class="footer__col">
+                <h4>Support</h4>
+                <ul>
+                    <li><a href="#">Help Center</a></li>
+                    <li><a href="#">Privacy</a></li>
+                </ul>
             </div>
         </div>
-    </section>
-
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h4>Clarity Academy</h4>
-                    <p>Professional online learning platform for ambitious learners</p>
-                </div>
-                <div class="footer-section">
-                    <h4>Learn</h4>
-                    <ul>
-                        <li><a href="courses.html">All Courses</a></li>
-                        <li><a href="dashboard.html">Dashboard</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4>Company</h4>
-                    <ul>
-                        <li><a href="#">About</a></li>
-                        <li><a href="#">Contact</a></li>
-                    </ul>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2024 Clarity Academy. All rights reserved.</p>
-            </div>
+        <div class="footer__bottom">
+            <span>&copy; 2025 Clarity Academy. All rights reserved.</span>
         </div>
-    </footer>
+    </div>
+</footer>
 
-    <script type="module" src="js/firebase-config.js"></script>
-    <script type="module" src="js/auth.js"></script>
-    <script type="module" src="js/dashboard.js"></script>
-    <script src="js/animations.js"></script>
+<script type="module" src="js/firebase-config.js"></script>
+<script type="module" src="js/auth.js"></script>
+<script type="module" src="js/dashboard.js"></script>
 </body>
 </html>
