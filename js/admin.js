@@ -1,1030 +1,746 @@
 import { auth, db } from './firebase-config.js';
-import { 
-    collection, 
-    getDocs, 
-    doc, 
-    getDoc,
-    addDoc, 
-    updateDoc, 
-    deleteDoc,
-    query,
-    where,
-    orderBy 
+import {
+    collection, getDocs, doc, getDoc, addDoc, updateDoc, deleteDoc,
+    query, where
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { requireAdmin } from './auth.js';
 import { transformImageUrl, validateImageUrl } from './image-utils.js';
 
+// ── State ──
 let allCourses = [];
-let currentEditingCourseId = null;
-let currentEditingCourseData = null;
-let currentEditingModuleId = null;
+let editingCourseId = null;
+let editingCourseData = null;
+let editingModuleId = null;
 
-// Utility function to generate unique IDs
+// ── Utils ──
 function generateId(prefix) {
     return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
-// Show success message
-function showSuccess(message) {
-    const existingMsg = document.querySelector('.success-toast');
-    if (existingMsg) existingMsg.remove();
-    
-    const toast = document.createElement('div');
-    toast.className = 'success-toast';
-    toast.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
-    toast.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: #059669;
-        color: white;
-        padding: 1rem 1.5rem;
-        border-radius: 0.5rem;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        z-index: 10000;
-        animation: slideIn 0.3s ease;
-    `;
-    document.body.appendChild(toast);
-    
-    setTimeout(() => {
-        toast.style.animation = 'slideOut 0.3s ease';
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
+function debounce(fn, ms) {
+    let t;
+    return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
 }
 
-// Show error message
-function showError(message) {
-    const existingMsg = document.querySelector('.error-toast');
-    if (existingMsg) existingMsg.remove();
-    
-    const toast = document.createElement('div');
-    toast.className = 'error-toast';
-    toast.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
-    toast.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: #dc2626;
-        color: white;
-        padding: 1rem 1.5rem;
-        border-radius: 0.5rem;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        z-index: 10000;
-        animation: slideIn 0.3s ease;
-    `;
-    document.body.appendChild(toast);
-    
+// ── Toast ──
+function toast(msg, type = 'info') {
+    let region = document.querySelector('.toast-region');
+    if (!region) {
+        region = document.createElement('div');
+        region.className = 'toast-region';
+        document.body.appendChild(region);
+    }
+    const el = document.createElement('div');
+    el.className = `toast toast--${type}`;
+    const icon = type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle';
+    el.innerHTML = `<i class="fas fa-${icon}"></i> ${msg}`;
+    region.appendChild(el);
     setTimeout(() => {
-        toast.style.animation = 'slideOut 0.3s ease';
-        setTimeout(() => toast.remove(), 300);
-    }, 5000);
+        el.classList.add('toast--out');
+        setTimeout(() => el.remove(), 300);
+    }, type === 'error' ? 5000 : 3500);
 }
 
-// Add CSS animations
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideIn {
-        from { transform: translateX(400px); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
-    }
-    @keyframes slideOut {
-        from { transform: translateX(0); opacity: 1; }
-        to { transform: translateX(400px); opacity: 0; }
-    }
-    .image-preview {
-        max-width: 200px;
-        max-height: 150px;
-        margin-top: 0.5rem;
-        border-radius: 0.5rem;
-        border: 2px solid var(--border-color);
-    }
-    .image-validation-status {
-        margin-top: 0.5rem;
-        padding: 0.5rem;
-        border-radius: 0.25rem;
-        font-size: 0.875rem;
-    }
-    .image-validation-status.success {
-        background: #d1fae5;
-        color: #065f46;
-    }
-    .image-validation-status.error {
-        background: #fee2e2;
-        color: #991b1b;
-    }
-    .image-validation-status.loading {
-        background: #dbeafe;
-        color: #1e40af;
-    }
-`;
-document.head.appendChild(style);
+// ── Modal helpers ──
+function openModal(id) {
+    document.getElementById(id)?.classList.add('is-open');
+}
 
-// Initialize admin dashboard
-async function initAdmin() {
-    const hasAccess = await requireAdmin();
-    if (!hasAccess) return;
+function closeModal(id) {
+    document.getElementById(id)?.classList.remove('is-open');
+}
+
+function closeAllModals() {
+    document.querySelectorAll('.modal-backdrop.is-open').forEach(m => m.classList.remove('is-open'));
+}
+
+// ── Init ──
+async function init() {
+    const ok = await requireAdmin();
+    if (!ok) return;
 
     loadStats();
     loadCourses();
     setupModals();
+    setupSearch();
 }
 
-// Load statistics
+// ── Stats ──
 async function loadStats() {
     try {
-        const coursesSnapshot = await getDocs(collection(db, 'courses'));
-        document.getElementById('totalCourses').textContent = coursesSnapshot.size;
+        const [courses, users, enrollments] = await Promise.all([
+            getDocs(collection(db, 'courses')),
+            getDocs(collection(db, 'users')),
+            getDocs(collection(db, 'enrollments'))
+        ]);
 
-        const usersSnapshot = await getDocs(collection(db, 'users'));
-        let studentCount = 0;
-        usersSnapshot.forEach(doc => {
-            if (doc.data().role === 'student') studentCount++;
-        });
-        document.getElementById('totalStudents').textContent = studentCount;
+        document.getElementById('statTotalCourses').textContent = courses.size;
+        document.getElementById('statTotalEnrollments').textContent = enrollments.size;
 
-        const enrollmentsSnapshot = await getDocs(collection(db, 'enrollments'));
-        document.getElementById('totalEnrollments').textContent = enrollmentsSnapshot.size;
-    } catch (error) {
-        console.error('Error loading stats:', error);
+        let students = 0;
+        users.forEach(d => { if (d.data().role === 'student') students++; });
+        document.getElementById('statTotalStudents').textContent = students;
+    } catch (err) {
+        console.error(err);
     }
 }
 
-// Load all courses
+// ── Courses ──
 async function loadCourses() {
-    const grid = document.getElementById('adminCoursesGrid');
-    
+    const list = document.getElementById('coursesList');
+    if (!list) return;
+
+    list.innerHTML = '<p class="loading-text">Loading courses…</p>';
+
     try {
-        const coursesSnapshot = await getDocs(collection(db, 'courses'));
-        
+        const snap = await getDocs(collection(db, 'courses'));
         allCourses = [];
-        coursesSnapshot.forEach(doc => {
-            allCourses.push({ id: doc.id, ...doc.data() });
-        });
-
-        if (allCourses.length === 0) {
-            grid.innerHTML = '<p class="loading">No courses yet. Create your first course!</p>';
-            return;
-        }
-
-        displayCourses(allCourses);
-    } catch (error) {
-        console.error('Error loading courses:', error);
-        grid.innerHTML = '<p class="loading">Error loading courses.</p>';
+        snap.forEach(d => allCourses.push({ id: d.id, ...d.data() }));
+        renderCourses(allCourses);
+    } catch (err) {
+        console.error(err);
+        list.innerHTML = '<p class="loading-text">Error loading courses.</p>';
     }
 }
 
-function displayCourses(courses) {
-    const grid = document.getElementById('adminCoursesGrid');
-    grid.innerHTML = '';
+function renderCourses(courses) {
+    const list = document.getElementById('coursesList');
+    if (!list) return;
 
-    courses.forEach(course => {
-        const card = createAdminCourseCard(course);
-        grid.appendChild(card);
-    });
-}
-
-function createAdminCourseCard(course) {
-    const card = document.createElement('div');
-    card.className = 'course-card course-admin-card';
-
-    const moduleCount = course.modules ? course.modules.length : 0;
-    const lessonCount = course.modules 
-        ? course.modules.reduce((sum, mod) => sum + (mod.lessons?.length || 0), 0)
-        : 0;
-    const status = course.published ? 'Published' : 'Draft';
-    const statusColor = course.published ? 'var(--success-color)' : 'var(--text-secondary)';
-
-    // Transform the thumbnail URL
-    const thumbnailUrl = transformImageUrl(course.thumbnail || '');
-
-    card.innerHTML = `
-        <img src="${thumbnailUrl}" 
-             alt="${course.title}"
-             onerror="this.onerror=null; this.src='https://via.placeholder.com/400x200/4F46E5/FFFFFF?text=${encodeURIComponent(course.title)}'; this.style.opacity='0.7';">
-        <div class="course-card-content">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                <span class="course-category">${course.category}</span>
-                <span style="color: ${statusColor}; font-size: 0.875rem; font-weight: 600;">
-                    <i class="fas fa-circle" style="font-size: 0.5rem;"></i> ${status}
-                </span>
-            </div>
-            <h3>${course.title}</h3>
-            <p>${course.description.substring(0, 100)}...</p>
-            <div class="course-meta">
-                <span class="course-instructor">
-                    <i class="fas fa-user"></i>
-                    ${course.instructor}
-                </span>
-                <span class="course-price">$${course.price}</span>
-            </div>
-            <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border-color); font-size: 0.875rem; color: var(--text-secondary);">
-                <i class="fas fa-layer-group"></i> ${moduleCount} modules • 
-                <i class="fas fa-play-circle"></i> ${lessonCount} lessons
-            </div>
-            <div class="course-admin-actions">
-                <button class="btn btn-sm btn-primary" onclick="window.adminPanel.editCourse('${course.id}')">
-                    <i class="fas fa-edit"></i> Edit
-                </button>
-                <button class="btn btn-sm btn-secondary" onclick="window.adminPanel.manageModules('${course.id}')">
-                    <i class="fas fa-list"></i> Modules
-                </button>
-                <button class="btn btn-sm btn-danger" onclick="window.adminPanel.deleteCourse('${course.id}')">
-                    <i class="fas fa-trash"></i> Delete
-                </button>
-            </div>
-        </div>
-    `;
-
-    return card;
-}
-
-// Modal setup
-function setupModals() {
-    const createBtn = document.getElementById('createCourseBtn');
-    const courseModal = document.getElementById('courseModal');
-    const modulesModal = document.getElementById('modulesModal');
-    const moduleFormModal = document.getElementById('moduleFormModal');
-    const lessonFormModal = document.getElementById('lessonFormModal');
-    
-    const closeBtns = document.querySelectorAll('.close');
-    const cancelBtn = document.getElementById('cancelBtn');
-
-    createBtn.addEventListener('click', () => {
-        openCourseModal();
-    });
-
-    closeBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            courseModal.classList.remove('active');
-            modulesModal.classList.remove('active');
-            moduleFormModal.classList.remove('active');
-            lessonFormModal.classList.remove('active');
-        });
-    });
-
-    cancelBtn.addEventListener('click', () => {
-        courseModal.classList.remove('active');
-    });
-
-    document.getElementById('cancelModuleBtn').addEventListener('click', () => {
-        moduleFormModal.classList.remove('active');
-    });
-
-    document.getElementById('cancelLessonBtn').addEventListener('click', () => {
-        lessonFormModal.classList.remove('active');
-    });
-
-    document.getElementById('courseForm').addEventListener('submit', handleCourseSave);
-    document.getElementById('moduleForm').addEventListener('submit', handleModuleSave);
-    document.getElementById('lessonForm').addEventListener('submit', handleLessonSave);
-
-    document.getElementById('addModuleBtn').addEventListener('click', () => {
-        openModuleFormModal();
-    });
-
-    document.getElementById('lessonType').addEventListener('change', (e) => {
-        toggleLessonFields(e.target.value);
-    });
-
-    // Add thumbnail URL validation
-    const thumbnailInput = document.getElementById('courseThumbnail');
-    if (thumbnailInput) {
-        thumbnailInput.addEventListener('blur', validateThumbnailUrl);
-        thumbnailInput.addEventListener('input', debounce(validateThumbnailUrl, 500));
-    }
-}
-
-// Debounce helper
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
-
-// Validate thumbnail URL
-async function validateThumbnailUrl() {
-    const thumbnailInput = document.getElementById('courseThumbnail');
-    const url = thumbnailInput.value.trim();
-    
-    // Remove any existing preview or status
-    const existingPreview = document.getElementById('thumbnailPreview');
-    const existingStatus = document.getElementById('thumbnailStatus');
-    if (existingPreview) existingPreview.remove();
-    if (existingStatus) existingStatus.remove();
-    
-    if (!url) {
+    if (!courses.length) {
+        list.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state__icon"><i class="fas fa-graduation-cap"></i></div>
+                <h3 class="empty-state__title">No courses yet</h3>
+                <p class="empty-state__desc">Create your first course to get started.</p>
+            </div>`;
         return;
     }
-    
-    // Show loading status
-    const statusDiv = document.createElement('div');
-    statusDiv.id = 'thumbnailStatus';
-    statusDiv.className = 'image-validation-status loading';
-    statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Validating image URL...';
-    thumbnailInput.parentNode.appendChild(statusDiv);
-    
-    try {
-        // Transform the URL
-        const transformedUrl = transformImageUrl(url);
-        
-        // Update input with transformed URL if different
-        if (transformedUrl !== url) {
-            thumbnailInput.value = transformedUrl;
-            statusDiv.className = 'image-validation-status success';
-            statusDiv.innerHTML = '<i class="fas fa-info-circle"></i> URL was transformed to direct image URL';
-        }
-        
-        // Validate the image loads
-        const isValid = await validateImageUrl(transformedUrl);
-        
-        if (isValid) {
-            statusDiv.className = 'image-validation-status success';
-            statusDiv.innerHTML = '<i class="fas fa-check-circle"></i> Image URL is valid';
-            
-            // Show preview
-            const previewImg = document.createElement('img');
-            previewImg.id = 'thumbnailPreview';
-            previewImg.className = 'image-preview';
-            previewImg.src = transformedUrl;
-            previewImg.alt = 'Thumbnail preview';
-            thumbnailInput.parentNode.appendChild(previewImg);
-        } else {
-            statusDiv.className = 'image-validation-status error';
-            statusDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> Unable to load image from this URL. Please check the URL or use a direct image link.';
-        }
-    } catch (error) {
-        statusDiv.className = 'image-validation-status error';
-        statusDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> Invalid URL format';
+
+    list.innerHTML = '';
+    courses.forEach(course => list.appendChild(buildAdminCard(course)));
+}
+
+function buildAdminCard(course) {
+    const wrap = document.createElement('div');
+    wrap.className = 'admin-course-card';
+
+    const thumb = transformImageUrl(course.thumbnail || '');
+    const moduleCount = course.modules?.length || 0;
+    const lessonCount = course.modules?.reduce((s, m) => s + (m.lessons?.length || 0), 0) || 0;
+    const status = course.published
+        ? '<span class="badge badge--success"><i class="fas fa-circle" style="font-size:7px"></i> Published</span>'
+        : '<span class="badge badge--draft"><i class="fas fa-circle" style="font-size:7px"></i> Draft</span>';
+
+    wrap.innerHTML = `
+        <div class="admin-course-card__thumb">
+            <img src="${thumb}" alt="${course.title}"
+                 onerror="this.onerror=null;this.src='https://via.placeholder.com/200x120/f4f4f8/999?text=No+Image'">
+        </div>
+        <div class="admin-course-card__info">
+            <div class="admin-course-card__title">${course.title}</div>
+            <div class="admin-course-card__meta">
+                ${status}
+                <span><i class="fas fa-tag"></i> ${course.category}</span>
+                <span><i class="fas fa-dollar-sign"></i> ${course.price}</span>
+                <span><i class="fas fa-layer-group"></i> ${moduleCount} modules</span>
+                <span><i class="fas fa-play-circle"></i> ${lessonCount} lessons</span>
+            </div>
+        </div>
+        <div class="admin-course-card__actions">
+            <button class="btn btn--secondary btn--sm" onclick="adminPanel.manageModules('${course.id}')">
+                <i class="fas fa-list"></i> Modules
+            </button>
+            <button class="btn btn--ghost btn--sm" onclick="adminPanel.editCourse('${course.id}')">
+                <i class="fas fa-edit"></i>
+            </button>
+            <button class="btn btn--danger btn--sm" onclick="adminPanel.deleteCourse('${course.id}')">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `;
+    return wrap;
+}
+
+// ── Search ──
+function setupSearch() {
+    const input = document.getElementById('courseSearch');
+    input?.addEventListener('input', debounce(() => {
+        const q = input.value.toLowerCase();
+        const filtered = !q ? allCourses : allCourses.filter(c =>
+            c.title.toLowerCase().includes(q) ||
+            c.category?.toLowerCase().includes(q) ||
+            c.instructor?.toLowerCase().includes(q)
+        );
+        renderCourses(filtered);
+    }, 300));
+}
+
+// ── Modal setup ──
+function setupModals() {
+    // Close on backdrop click
+    document.querySelectorAll('.modal-backdrop').forEach(bd => {
+        bd.addEventListener('click', (e) => {
+            if (e.target === bd) bd.classList.remove('is-open');
+        });
+    });
+
+    // Close buttons
+    document.querySelectorAll('.modal__close').forEach(btn => {
+        btn.addEventListener('click', () => closeAllModals());
+    });
+
+    // Create course button
+    document.getElementById('createCourseBtn')?.addEventListener('click', () => openCourseModal());
+
+    // Course form
+    document.getElementById('courseForm')?.addEventListener('submit', handleCourseSave);
+    document.getElementById('cancelCourseBtn')?.addEventListener('click', () => closeModal('courseModal'));
+
+    // Module form
+    document.getElementById('moduleForm')?.addEventListener('submit', handleModuleSave);
+    document.getElementById('cancelModuleBtn')?.addEventListener('click', () => closeModal('moduleFormModal'));
+    document.getElementById('addModuleBtn')?.addEventListener('click', () => openModuleFormModal());
+
+    // Lesson form
+    document.getElementById('lessonForm')?.addEventListener('submit', handleLessonSave);
+    document.getElementById('cancelLessonBtn')?.addEventListener('click', () => closeModal('lessonFormModal'));
+    document.getElementById('lessonType')?.addEventListener('change', e => toggleLessonFields(e.target.value));
+
+    // Thumbnail validation
+    const thumbInput = document.getElementById('courseThumbnail');
+    if (thumbInput) {
+        thumbInput.addEventListener('blur', validateThumb);
+        thumbInput.addEventListener('input', debounce(validateThumb, 600));
     }
 }
 
-// Open course modal
+// ── Course modal ──
 function openCourseModal(courseId = null) {
-    const modal = document.getElementById('courseModal');
-    const modalTitle = document.getElementById('modalTitle');
+    editingCourseId = courseId;
     const form = document.getElementById('courseForm');
-
     form.reset();
-    currentEditingCourseId = courseId;
+    clearThumbValidation();
 
-    // Clean up any validation UI
-    const existingPreview = document.getElementById('thumbnailPreview');
-    const existingStatus = document.getElementById('thumbnailStatus');
-    if (existingPreview) existingPreview.remove();
-    if (existingStatus) existingStatus.remove();
+    document.getElementById('courseModalTitle').textContent = courseId ? 'Edit Course' : 'New Course';
 
     if (courseId) {
-        modalTitle.textContent = 'Edit Course';
-        const course = allCourses.find(c => c.id === courseId);
-        if (course) {
-            document.getElementById('courseTitle').value = course.title;
-            document.getElementById('courseSlug').value = course.slug;
-            document.getElementById('courseDescription').value = course.description;
-            document.getElementById('courseCategory').value = course.category;
-            document.getElementById('courseInstructor').value = course.instructor;
-            document.getElementById('courseThumbnail').value = course.thumbnail;
-            document.getElementById('coursePrice').value = course.price;
-            document.getElementById('coursePublished').checked = course.published;
-            document.getElementById('courseAccessType').value = course.accessConfig?.type || 'sequential';
-            document.getElementById('courseAllowSkip').checked = course.accessConfig?.allowSkip || false;
-            document.getElementById('courseId').value = courseId;
-            
-            // Trigger validation for existing thumbnail
-            if (course.thumbnail) {
-                setTimeout(() => validateThumbnailUrl(), 100);
-            }
+        const c = allCourses.find(x => x.id === courseId);
+        if (c) {
+            document.getElementById('courseTitle').value = c.title || '';
+            document.getElementById('courseSlug').value = c.slug || '';
+            document.getElementById('courseDescription').value = c.description || '';
+            document.getElementById('courseCategory').value = c.category || '';
+            document.getElementById('courseInstructor').value = c.instructor || '';
+            document.getElementById('courseThumbnail').value = c.thumbnail || '';
+            document.getElementById('coursePrice').value = c.price || '';
+            document.getElementById('coursePublished').checked = c.published || false;
+            document.getElementById('courseAccessType').value = c.accessConfig?.type || 'sequential';
+            document.getElementById('courseAllowSkip').checked = c.accessConfig?.allowSkip || false;
+
+            if (c.thumbnail) setTimeout(validateThumb, 150);
         }
-    } else {
-        modalTitle.textContent = 'Create Course';
-        document.getElementById('courseId').value = '';
-        document.getElementById('courseAccessType').value = 'sequential';
-        document.getElementById('courseAllowSkip').checked = false;
     }
 
-    modal.classList.add('active');
+    openModal('courseModal');
 }
 
-// Handle course save
+async function validateThumb() {
+    const input = document.getElementById('courseThumbnail');
+    const url = input?.value.trim();
+    clearThumbValidation();
+    if (!url) return;
+
+    const statusEl = document.getElementById('thumbStatus');
+    const previewEl = document.getElementById('thumbPreview');
+
+    statusEl.className = 'validation-status validation-status--loading';
+    statusEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking URL…';
+    statusEl.style.display = 'flex';
+
+    try {
+        const transformed = transformImageUrl(url);
+        if (transformed !== url) input.value = transformed;
+
+        const valid = await validateImageUrl(transformed);
+        if (valid) {
+            statusEl.className = 'validation-status validation-status--success';
+            statusEl.innerHTML = '<i class="fas fa-check-circle"></i> Image loaded successfully';
+            previewEl.src = transformed;
+            previewEl.style.display = 'block';
+        } else {
+            statusEl.className = 'validation-status validation-status--error';
+            statusEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> Could not load image from this URL';
+        }
+    } catch {
+        statusEl.className = 'validation-status validation-status--error';
+        statusEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> Invalid URL';
+    }
+}
+
+function clearThumbValidation() {
+    const statusEl = document.getElementById('thumbStatus');
+    const previewEl = document.getElementById('thumbPreview');
+    if (statusEl) { statusEl.style.display = 'none'; statusEl.textContent = ''; }
+    if (previewEl) { previewEl.style.display = 'none'; previewEl.src = ''; }
+}
+
 async function handleCourseSave(e) {
     e.preventDefault();
-    
-    const saveBtn = document.getElementById('saveCourseBtn');
-    saveBtn.disabled = true;
-    saveBtn.textContent = 'Saving...';
+    const btn = document.getElementById('saveCourseBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
 
-    // Transform the thumbnail URL before saving
-    const thumbnailInput = document.getElementById('courseThumbnail');
-    const originalUrl = thumbnailInput.value.trim();
-    const transformedUrl = transformImageUrl(originalUrl);
-
-    const courseData = {
-        title: document.getElementById('courseTitle').value,
-        slug: document.getElementById('courseSlug').value,
+    const thumbRaw = document.getElementById('courseThumbnail').value.trim();
+    const data = {
+        title:       document.getElementById('courseTitle').value,
+        slug:        document.getElementById('courseSlug').value,
         description: document.getElementById('courseDescription').value,
-        category: document.getElementById('courseCategory').value,
-        instructor: document.getElementById('courseInstructor').value,
-        thumbnail: transformedUrl, // Use transformed URL
-        price: parseFloat(document.getElementById('coursePrice').value),
-        published: document.getElementById('coursePublished').checked,
+        category:    document.getElementById('courseCategory').value,
+        instructor:  document.getElementById('courseInstructor').value,
+        thumbnail:   transformImageUrl(thumbRaw),
+        price:       parseFloat(document.getElementById('coursePrice').value),
+        published:   document.getElementById('coursePublished').checked,
         accessConfig: {
-            type: document.getElementById('courseAccessType').value,
+            type:      document.getElementById('courseAccessType').value,
             allowSkip: document.getElementById('courseAllowSkip').checked
         },
         updatedAt: new Date()
     };
 
     try {
-        if (currentEditingCourseId) {
-            await updateDoc(doc(db, 'courses', currentEditingCourseId), courseData);
-            showSuccess('Course updated successfully!');
+        if (editingCourseId) {
+            await updateDoc(doc(db, 'courses', editingCourseId), data);
+            toast('Course updated!', 'success');
         } else {
-            courseData.createdAt = new Date();
-            courseData.modules = [];
-            await addDoc(collection(db, 'courses'), courseData);
-            showSuccess('Course created successfully!');
+            data.createdAt = new Date();
+            data.modules = [];
+            await addDoc(collection(db, 'courses'), data);
+            toast('Course created!', 'success');
         }
-
-        document.getElementById('courseModal').classList.remove('active');
+        closeModal('courseModal');
         loadCourses();
         loadStats();
-    } catch (error) {
-        console.error('Error saving course:', error);
-        showError('Error saving course: ' + error.message);
+    } catch (err) {
+        console.error(err);
+        toast('Save failed: ' + err.message, 'error');
     } finally {
-        saveBtn.disabled = false;
-        saveBtn.textContent = 'Save Course';
+        btn.disabled = false;
+        btn.textContent = 'Save Course';
     }
 }
 
-// Edit course
-function editCourse(courseId) {
-    openCourseModal(courseId);
-}
-
-// Delete course
+// ── Delete course ──
 async function deleteCourse(courseId) {
-    if (!confirm('Are you sure you want to delete this course? This action cannot be undone.')) {
-        return;
-    }
+    if (!confirm('Delete this course? This cannot be undone.')) return;
 
     try {
         await deleteDoc(doc(db, 'courses', courseId));
-        
-        const enrollmentsQuery = query(collection(db, 'enrollments'), where('courseId', '==', courseId));
-        const enrollmentsSnapshot = await getDocs(enrollmentsQuery);
-        enrollmentsSnapshot.forEach(async (enrollDoc) => {
-            await deleteDoc(doc(db, 'enrollments', enrollDoc.id));
-        });
 
-        const progressQuery = query(collection(db, 'progress'), where('courseId', '==', courseId));
-        const progressSnapshot = await getDocs(progressQuery);
-        progressSnapshot.forEach(async (progDoc) => {
-            await deleteDoc(doc(db, 'progress', progDoc.id));
-        });
+        // Clean up enrollments and progress
+        const [enSnap, prSnap] = await Promise.all([
+            getDocs(query(collection(db, 'enrollments'), where('courseId', '==', courseId))),
+            getDocs(query(collection(db, 'progress'), where('courseId', '==', courseId)))
+        ]);
 
+        await Promise.all([
+            ...enSnap.docs.map(d => deleteDoc(doc(db, 'enrollments', d.id))),
+            ...prSnap.docs.map(d => deleteDoc(doc(db, 'progress', d.id)))
+        ]);
+
+        toast('Course deleted.', 'success');
         loadCourses();
         loadStats();
-        showSuccess('Course deleted successfully!');
-    } catch (error) {
-        console.error('Error deleting course:', error);
-        showError('Error deleting course: ' + error.message);
+    } catch (err) {
+        console.error(err);
+        toast('Delete failed: ' + err.message, 'error');
     }
 }
 
-// Manage modules
+// ── Modules modal ──
 async function manageModules(courseId) {
-    currentEditingCourseId = courseId;
-    
-    // Reload fresh data from Firestore
+    editingCourseId = courseId;
+
     try {
-        const courseDoc = await getDoc(doc(db, 'courses', courseId));
-        if (!courseDoc.exists()) {
-            showError('Course not found');
-            return;
-        }
-        
-        currentEditingCourseData = { id: courseDoc.id, ...courseDoc.data() };
-        
-        document.getElementById('modulesCourseName').textContent = currentEditingCourseData.title;
-        displayModulesList(currentEditingCourseData.modules || []);
-        
-        document.getElementById('modulesModal').classList.add('active');
-    } catch (error) {
-        console.error('Error loading course:', error);
-        showError('Error loading course data');
+        const snap = await getDoc(doc(db, 'courses', courseId));
+        if (!snap.exists()) { toast('Course not found.', 'error'); return; }
+        editingCourseData = { id: snap.id, ...snap.data() };
+
+        document.getElementById('modulesCourseName').textContent = editingCourseData.title;
+        renderModules(editingCourseData.modules || []);
+        openModal('modulesModal');
+    } catch (err) {
+        console.error(err);
+        toast('Error loading course.', 'error');
     }
 }
 
-function displayModulesList(modules) {
-    const modulesList = document.getElementById('modulesList');
-    
-    if (modules.length === 0) {
-        modulesList.innerHTML = '<p class="loading">No modules yet. Click "Add Module" to create your first module!</p>';
+function renderModules(modules) {
+    const container = document.getElementById('modulesList');
+    editingModuleId = null;
+
+    if (!modules.length) {
+        container.innerHTML = `
+            <div class="empty-state" style="padding:var(--s-12) var(--s-6)">
+                <div class="empty-state__icon"><i class="fas fa-layer-group"></i></div>
+                <h3 class="empty-state__title">No modules yet</h3>
+                <p class="empty-state__desc">Add your first module to start building this course.</p>
+            </div>`;
         return;
     }
 
-    const sortedModules = [...modules].sort((a, b) => a.order - b.order);
+    const sorted = [...modules].sort((a, b) => a.order - b.order);
+    container.innerHTML = '';
 
-    modulesList.innerHTML = '';
-    sortedModules.forEach((module) => {
-        const moduleItem = document.createElement('div');
-        moduleItem.className = 'module-admin-item';
-        moduleItem.style.cssText = 'background: #f8f9fa; padding: 1rem; margin-bottom: 1rem; border-radius: 0.5rem; border-left: 4px solid var(--primary-color);';
+    sorted.forEach(mod => {
+        const item = document.createElement('div');
+        item.className = 'admin-module-item';
+        const lessonCount = mod.lessons?.length || 0;
 
-        const lessonCount = module.lessons?.length || 0;
-
-        moduleItem.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        item.innerHTML = `
+            <div class="admin-module-item__header">
                 <div>
-                    <h4 style="margin: 0;">${module.order}. ${module.title}</h4>
-                    <p style="margin: 0.25rem 0 0 0; color: var(--text-secondary); font-size: 0.875rem;">
-                        ${module.description || 'No description'} • ${lessonCount} lessons
-                    </p>
+                    <div class="admin-module-item__title">${mod.order}. ${mod.title}</div>
+                    <div class="admin-module-item__meta">${mod.description || 'No description'} · ${lessonCount} lessons</div>
                 </div>
-                <div style="display: flex; gap: 0.5rem;">
-                    <button class="btn btn-sm btn-secondary" onclick="window.adminPanel.manageLessons('${module.id}')">
+                <div class="admin-module-item__actions">
+                    <button class="btn btn--ghost btn--sm" onclick="adminPanel.manageLessons('${mod.id}')">
                         <i class="fas fa-list"></i> Lessons
                     </button>
-                    <button class="btn btn-sm btn-primary" onclick="window.adminPanel.editModule('${module.id}')">
+                    <button class="btn btn--ghost btn--sm" onclick="adminPanel.editModule('${mod.id}')">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn btn-sm btn-danger" onclick="window.adminPanel.deleteModule('${module.id}')">
+                    <button class="btn btn--danger btn--sm" onclick="adminPanel.deleteModule('${mod.id}')">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
             </div>
         `;
-
-        modulesList.appendChild(moduleItem);
+        container.appendChild(item);
     });
 }
 
-// Open module form modal
 function openModuleFormModal(moduleId = null) {
-    const modal = document.getElementById('moduleFormModal');
-    const modalTitle = document.getElementById('moduleModalTitle');
     const form = document.getElementById('moduleForm');
-
     form.reset();
 
+    document.getElementById('moduleModalTitle').textContent = moduleId ? 'Edit Module' : 'Add Module';
+
     if (moduleId) {
-        modalTitle.textContent = 'Edit Module';
-        const module = currentEditingCourseData.modules.find(m => m.id === moduleId);
-        if (module) {
-            document.getElementById('moduleTitle').value = module.title;
-            document.getElementById('moduleDescription').value = module.description || '';
-            document.getElementById('moduleOrder').value = module.order;
+        const mod = editingCourseData.modules.find(m => m.id === moduleId);
+        if (mod) {
+            document.getElementById('moduleTitle').value = mod.title || '';
+            document.getElementById('moduleDescription').value = mod.description || '';
+            document.getElementById('moduleOrder').value = mod.order || 1;
             document.getElementById('moduleId').value = moduleId;
         }
     } else {
-        modalTitle.textContent = 'Add Module';
-        const nextOrder = currentEditingCourseData.modules ? currentEditingCourseData.modules.length + 1 : 1;
+        const nextOrder = (editingCourseData.modules?.length || 0) + 1;
         document.getElementById('moduleOrder').value = nextOrder;
         document.getElementById('moduleId').value = '';
     }
 
-    document.getElementById('moduleCourseId').value = currentEditingCourseId;
-    modal.classList.add('active');
+    document.getElementById('moduleCourseId').value = editingCourseId;
+    openModal('moduleFormModal');
 }
 
-// Handle module save
 async function handleModuleSave(e) {
     e.preventDefault();
-
-    const saveBtn = e.target.querySelector('button[type="submit"]');
-    if (saveBtn) {
-        saveBtn.disabled = true;
-        saveBtn.textContent = 'Saving...';
-    }
-
-    const moduleData = {
-        title: document.getElementById('moduleTitle').value,
-        description: document.getElementById('moduleDescription').value,
-        order: parseInt(document.getElementById('moduleOrder').value),
-        lessons: []
-    };
+    const btn = e.target.querySelector('[type="submit"]');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…'; }
 
     const moduleId = document.getElementById('moduleId').value;
-    const modules = currentEditingCourseData.modules || [];
+    const modules = [...(editingCourseData.modules || [])];
+    const data = {
+        title:       document.getElementById('moduleTitle').value,
+        description: document.getElementById('moduleDescription').value,
+        order:       parseInt(document.getElementById('moduleOrder').value)
+    };
 
     try {
         if (moduleId) {
-            // Edit existing module
-            const moduleIndex = modules.findIndex(m => m.id === moduleId);
-            if (moduleIndex !== -1) {
-                // Preserve existing lessons when editing
-                moduleData.lessons = modules[moduleIndex].lessons || [];
-                modules[moduleIndex] = { ...modules[moduleIndex], ...moduleData };
-            } else {
-                throw new Error('Module not found');
-            }
+            const idx = modules.findIndex(m => m.id === moduleId);
+            if (idx === -1) throw new Error('Module not found');
+            data.lessons = modules[idx].lessons || [];
+            modules[idx] = { ...modules[idx], ...data };
         } else {
-            // Add new module
-            moduleData.id = generateId('module');
-            moduleData.lessons = [];
-            modules.push(moduleData);
+            data.id = generateId('module');
+            data.lessons = [];
+            modules.push(data);
         }
 
-        // Update Firestore
-        await updateDoc(doc(db, 'courses', currentEditingCourseId), {
-            modules: modules,
-            updatedAt: new Date()
-        });
+        await updateDoc(doc(db, 'courses', editingCourseId), { modules, updatedAt: new Date() });
 
-        // Reload fresh data
-        const courseDoc = await getDoc(doc(db, 'courses', currentEditingCourseId));
-        if (!courseDoc.exists()) {
-            throw new Error('Course not found after update');
-        }
-        
-        currentEditingCourseData = { id: courseDoc.id, ...courseDoc.data() };
+        const fresh = await getDoc(doc(db, 'courses', editingCourseId));
+        editingCourseData = { id: fresh.id, ...fresh.data() };
 
-        displayModulesList(currentEditingCourseData.modules);
-        document.getElementById('moduleFormModal').classList.remove('active');
+        renderModules(editingCourseData.modules);
+        closeModal('moduleFormModal');
         loadCourses();
-        
-        showSuccess(moduleId ? 'Module updated successfully!' : 'Module created successfully!');
-    } catch (error) {
-        console.error('Error saving module:', error);
-        showError('Failed to save module: ' + error.message);
+        toast(moduleId ? 'Module updated.' : 'Module added.', 'success');
+    } catch (err) {
+        console.error(err);
+        toast('Save failed: ' + err.message, 'error');
     } finally {
-        if (saveBtn) {
-            saveBtn.disabled = false;
-            saveBtn.textContent = 'Save Module';
-        }
+        if (btn) { btn.disabled = false; btn.textContent = 'Save Module'; }
     }
 }
 
-// Edit module
-function editModule(moduleId) {
-    openModuleFormModal(moduleId);
-}
-
-// Delete module
 async function deleteModule(moduleId) {
-    if (!confirm('Are you sure you want to delete this module and all its lessons?')) {
-        return;
-    }
+    if (!confirm('Delete this module and all its lessons?')) return;
 
     try {
-        const modules = currentEditingCourseData.modules || [];
-        const moduleIndex = modules.findIndex(m => m.id === moduleId);
-        
-        if (moduleIndex !== -1) {
-            modules.splice(moduleIndex, 1);
-            
-            // Reorder remaining modules
-            modules.forEach((module, index) => {
-                module.order = index + 1;
-            });
+        const modules = [...(editingCourseData.modules || [])];
+        const idx = modules.findIndex(m => m.id === moduleId);
+        if (idx === -1) return;
 
-            await updateDoc(doc(db, 'courses', currentEditingCourseId), {
-                modules: modules,
-                updatedAt: new Date()
-            });
+        modules.splice(idx, 1);
+        modules.forEach((m, i) => { m.order = i + 1; });
 
-            // Reload fresh data
-            const courseDoc = await getDoc(doc(db, 'courses', currentEditingCourseId));
-            currentEditingCourseData = { id: courseDoc.id, ...courseDoc.data() };
+        await updateDoc(doc(db, 'courses', editingCourseId), { modules, updatedAt: new Date() });
 
-            displayModulesList(currentEditingCourseData.modules);
-            loadCourses();
-            showSuccess('Module deleted successfully!');
-        }
-    } catch (error) {
-        console.error('Error deleting module:', error);
-        showError('Error deleting module: ' + error.message);
+        const fresh = await getDoc(doc(db, 'courses', editingCourseId));
+        editingCourseData = { id: fresh.id, ...fresh.data() };
+
+        renderModules(editingCourseData.modules);
+        loadCourses();
+        toast('Module deleted.', 'success');
+    } catch (err) {
+        console.error(err);
+        toast('Delete failed: ' + err.message, 'error');
     }
 }
 
-// Manage lessons - IMPROVED: Opens separate lesson management modal
+// ── Lessons ──
 function manageLessons(moduleId) {
-    currentEditingModuleId = moduleId;
-    const module = currentEditingCourseData.modules.find(m => m.id === moduleId);
-    
-    if (!module) {
-        showError('Module not found');
-        return;
-    }
+    editingModuleId = moduleId;
+    const mod = editingCourseData.modules.find(m => m.id === moduleId);
+    if (!mod) { toast('Module not found.', 'error'); return; }
 
-    // Update the modules modal to show lesson management
-    const modulesList = document.getElementById('modulesList');
-    
-    modulesList.innerHTML = `
-        <div style="margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid var(--border-color);">
-            <button class="btn btn-sm btn-secondary" onclick="window.adminPanel.backToModules()" style="margin-bottom: 0.5rem;">
+    const container = document.getElementById('modulesList');
+    container.innerHTML = `
+        <div style="margin-bottom:var(--s-5);padding-bottom:var(--s-5);border-bottom:1px solid var(--ink-100)">
+            <button class="btn btn--ghost btn--sm" onclick="adminPanel.backToModules()" style="margin-bottom:var(--s-3)">
                 <i class="fas fa-arrow-left"></i> Back to Modules
             </button>
-            <h3 style="margin: 0.5rem 0 0.25rem 0;">Module ${module.order}: ${module.title}</h3>
-            <p style="margin: 0; color: var(--text-secondary); font-size: 0.875rem;">${module.description || 'Manage lessons for this module'}</p>
+            <h3 style="font-size:var(--text-base);font-weight:700;color:var(--ink-900);margin-bottom:var(--s-1)">
+                Module ${mod.order}: ${mod.title}
+            </h3>
+            <p style="font-size:var(--text-xs);color:var(--ink-400)">${mod.description || 'Manage lessons for this module'}</p>
         </div>
-        <button class="btn btn-primary btn-sm" style="margin-bottom: 1rem;" onclick="window.adminPanel.openLessonFormModal()">
+        <button class="btn btn--primary btn--sm" onclick="adminPanel.openLessonFormModal()" style="margin-bottom:var(--s-5)">
             <i class="fas fa-plus"></i> Add Lesson
         </button>
-        <div id="lessonsListContainer"></div>
+        <div id="lessonsList"></div>
     `;
 
-    displayLessonsList(module.lessons || []);
+    renderLessons(mod.lessons || []);
 }
 
-function backToModules() {
-    currentEditingModuleId = null;
-    displayModulesList(currentEditingCourseData.modules || []);
-}
-
-function displayLessonsList(lessons) {
-    const container = document.getElementById('lessonsListContainer');
-    
+function renderLessons(lessons) {
+    const container = document.getElementById('lessonsList');
     if (!container) return;
-    
-    if (lessons.length === 0) {
-        container.innerHTML = '<p class="loading">No lessons yet. Click "Add Lesson" to create your first lesson!</p>';
+
+    if (!lessons.length) {
+        container.innerHTML = `<p style="text-align:center;color:var(--ink-400);font-size:var(--text-sm);padding:var(--s-8) 0">No lessons yet. Add your first lesson.</p>`;
         return;
     }
 
-    const sortedLessons = [...lessons].sort((a, b) => a.order - b.order);
-
+    const sorted = [...lessons].sort((a, b) => a.order - b.order);
     container.innerHTML = '';
-    sortedLessons.forEach((lesson) => {
-        const lessonItem = document.createElement('div');
-        lessonItem.className = 'lesson-admin-item';
-        lessonItem.style.cssText = 'background: white; padding: 1rem; margin-bottom: 0.75rem; border-radius: 0.5rem; border: 1px solid var(--border-color);';
-        
-        let typeIcon = 'fa-video';
-        let typeLabel = 'Video';
-        if (lesson.type === 'text') {
-            typeIcon = 'fa-file-alt';
-            typeLabel = 'Text';
-        } else if (lesson.type === 'mixed') {
-            typeIcon = 'fa-layer-group';
-            typeLabel = 'Mixed';
-        }
-        
-        const durationText = lesson.duration ? `${lesson.duration} min` : 'No duration';
-        const accessRule = lesson.accessRule || 'sequential';
 
-        lessonItem.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <h4 style="margin: 0;">${lesson.order}. ${lesson.title}</h4>
-                    <p style="margin: 0.25rem 0 0 0; color: var(--text-secondary); font-size: 0.875rem;">
-                        <i class="fas ${typeIcon}"></i> ${typeLabel} • 
-                        <i class="fas fa-clock"></i> ${durationText} • 
-                        <i class="fas fa-key"></i> ${accessRule}
-                    </p>
+    sorted.forEach(lesson => {
+        const item = document.createElement('div');
+        item.className = 'admin-lesson-item';
+
+        const typeIcons = { video: 'fa-video', text: 'fa-file-alt', mixed: 'fa-layer-group' };
+        const icon = typeIcons[lesson.type] || 'fa-file';
+
+        item.innerHTML = `
+            <div>
+                <div class="admin-lesson-item__title">
+                    <i class="fas ${icon}" style="color:var(--ink-400);margin-right:var(--s-2)"></i>
+                    ${lesson.order}. ${lesson.title}
                 </div>
-                <div style="display: flex; gap: 0.5rem;">
-                    <button class="btn btn-sm btn-primary" onclick="window.adminPanel.editLesson('${lesson.id}')">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn btn-sm btn-danger" onclick="window.adminPanel.deleteLesson('${lesson.id}')">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                <div class="admin-lesson-item__meta">
+                    ${lesson.type || 'text'} ${lesson.duration ? '· ' + lesson.duration + ' min' : ''} · ${lesson.accessRule || 'sequential'}
                 </div>
             </div>
+            <div class="admin-lesson-item__actions">
+                <button class="btn btn--ghost btn--sm" onclick="adminPanel.editLesson('${lesson.id}')">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn--danger btn--sm" onclick="adminPanel.deleteLesson('${lesson.id}')">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
         `;
-
-        container.appendChild(lessonItem);
+        container.appendChild(item);
     });
 }
 
-// Open lesson form modal
-function openLessonFormModal(lessonId = null) {
-    const modal = document.getElementById('lessonFormModal');
-    const modalTitle = document.getElementById('lessonModalTitle');
-    const form = document.getElementById('lessonForm');
+function backToModules() {
+    editingModuleId = null;
+    renderModules(editingCourseData.modules || []);
+}
 
+function openLessonFormModal(lessonId = null) {
+    const form = document.getElementById('lessonForm');
     form.reset();
 
-    const module = currentEditingCourseData.modules.find(m => m.id === currentEditingModuleId);
-    if (!module) {
-        showError('Module not found');
-        return;
-    }
+    const mod = editingCourseData.modules.find(m => m.id === editingModuleId);
+    if (!mod) { toast('Module not found.', 'error'); return; }
+
+    document.getElementById('lessonModalTitle').textContent = lessonId ? 'Edit Lesson' : 'Add Lesson';
 
     if (lessonId) {
-        modalTitle.textContent = 'Edit Lesson';
-        const lesson = module.lessons.find(l => l.id === lessonId);
+        const lesson = mod.lessons?.find(l => l.id === lessonId);
         if (lesson) {
-            document.getElementById('lessonTitle').value = lesson.title;
-            document.getElementById('lessonOrder').value = lesson.order;
+            document.getElementById('lessonTitle').value = lesson.title || '';
+            document.getElementById('lessonOrder').value = lesson.order || 1;
             document.getElementById('lessonType').value = lesson.type || 'text';
             document.getElementById('lessonVideoUrl').value = lesson.videoUrl || '';
             document.getElementById('lessonContent').value = lesson.content || '';
             document.getElementById('lessonDuration').value = lesson.duration || '';
             document.getElementById('lessonAccessRule').value = lesson.accessRule || 'sequential';
             document.getElementById('lessonId').value = lessonId;
-            
             toggleLessonFields(lesson.type || 'text');
         }
     } else {
-        modalTitle.textContent = 'Add Lesson';
-        const nextOrder = module.lessons ? module.lessons.length + 1 : 1;
+        const nextOrder = (mod.lessons?.length || 0) + 1;
         document.getElementById('lessonOrder').value = nextOrder;
         document.getElementById('lessonId').value = '';
         document.getElementById('lessonType').value = 'text';
-        document.getElementById('lessonAccessRule').value = currentEditingCourseData.accessConfig?.type || 'sequential';
-        
+        document.getElementById('lessonAccessRule').value = editingCourseData.accessConfig?.type || 'sequential';
         toggleLessonFields('text');
     }
 
-    document.getElementById('lessonCourseId').value = currentEditingCourseId;
-    document.getElementById('lessonModuleId').value = currentEditingModuleId;
-    modal.classList.add('active');
+    document.getElementById('lessonCourseId').value = editingCourseId;
+    document.getElementById('lessonModuleId').value = editingModuleId;
+    openModal('lessonFormModal');
 }
 
-// Toggle lesson form fields based on type
 function toggleLessonFields(type) {
-    const videoUrlGroup = document.getElementById('videoUrlGroup');
+    const videoGroup   = document.getElementById('videoUrlGroup');
     const contentGroup = document.getElementById('contentGroup');
-    const videoUrlInput = document.getElementById('lessonVideoUrl');
+    const videoInput   = document.getElementById('lessonVideoUrl');
     const contentInput = document.getElementById('lessonContent');
-    
+
     if (type === 'video') {
-        videoUrlGroup.style.display = 'block';
+        videoGroup.style.display   = 'block';
         contentGroup.style.display = 'none';
-        videoUrlInput.required = true;
+        videoInput.required   = true;
         contentInput.required = false;
     } else if (type === 'text') {
-        videoUrlGroup.style.display = 'none';
+        videoGroup.style.display   = 'none';
         contentGroup.style.display = 'block';
-        videoUrlInput.required = false;
+        videoInput.required   = false;
         contentInput.required = true;
-    } else if (type === 'mixed') {
-        videoUrlGroup.style.display = 'block';
+    } else {
+        videoGroup.style.display   = 'block';
         contentGroup.style.display = 'block';
-        videoUrlInput.required = true;
+        videoInput.required   = true;
         contentInput.required = true;
     }
 }
 
-// Handle lesson save
 async function handleLessonSave(e) {
     e.preventDefault();
-
-    const saveBtn = e.target.querySelector('button[type="submit"]');
-    if (saveBtn) {
-        saveBtn.disabled = true;
-        saveBtn.textContent = 'Saving...';
-    }
-
-    const lessonType = document.getElementById('lessonType').value;
-    
-    const lessonData = {
-        title: document.getElementById('lessonTitle').value,
-        order: parseInt(document.getElementById('lessonOrder').value),
-        type: lessonType,
-        duration: parseInt(document.getElementById('lessonDuration').value) || null,
-        accessRule: document.getElementById('lessonAccessRule').value
-    };
-    
-    if (lessonType === 'video' || lessonType === 'mixed') {
-        lessonData.videoUrl = document.getElementById('lessonVideoUrl').value;
-    }
-    
-    if (lessonType === 'text' || lessonType === 'mixed') {
-        lessonData.content = document.getElementById('lessonContent').value;
-    }
+    const btn = e.target.querySelector('[type="submit"]');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…'; }
 
     const lessonId = document.getElementById('lessonId').value;
-    const modules = [...currentEditingCourseData.modules];
-    const moduleIndex = modules.findIndex(m => m.id === currentEditingModuleId);
-    
-    if (moduleIndex === -1) {
-        showError('Module not found');
-        if (saveBtn) {
-            saveBtn.disabled = false;
-            saveBtn.textContent = 'Save Lesson';
-        }
-        return;
+    const type = document.getElementById('lessonType').value;
+
+    const data = {
+        title:      document.getElementById('lessonTitle').value,
+        order:      parseInt(document.getElementById('lessonOrder').value),
+        type,
+        duration:   parseInt(document.getElementById('lessonDuration').value) || null,
+        accessRule: document.getElementById('lessonAccessRule').value
+    };
+
+    if (type === 'video' || type === 'mixed') {
+        data.videoUrl = document.getElementById('lessonVideoUrl').value;
+    }
+    if (type === 'text' || type === 'mixed') {
+        data.content = document.getElementById('lessonContent').value;
     }
 
-    const lessons = modules[moduleIndex].lessons || [];
+    const modules = [...editingCourseData.modules];
+    const modIdx = modules.findIndex(m => m.id === editingModuleId);
+    if (modIdx === -1) { toast('Module not found.', 'error'); return; }
+
+    const lessons = [...(modules[modIdx].lessons || [])];
 
     try {
         if (lessonId) {
-            // Edit existing lesson
-            const lessonIndex = lessons.findIndex(l => l.id === lessonId);
-            if (lessonIndex !== -1) {
-                lessons[lessonIndex] = { ...lessons[lessonIndex], ...lessonData };
-            } else {
-                throw new Error('Lesson not found');
-            }
+            const idx = lessons.findIndex(l => l.id === lessonId);
+            if (idx === -1) throw new Error('Lesson not found');
+            lessons[idx] = { ...lessons[idx], ...data };
         } else {
-            // Add new lesson
-            lessonData.id = generateId('lesson');
-            lessons.push(lessonData);
+            data.id = generateId('lesson');
+            lessons.push(data);
         }
 
-        modules[moduleIndex].lessons = lessons;
+        modules[modIdx].lessons = lessons;
+        await updateDoc(doc(db, 'courses', editingCourseId), { modules, updatedAt: new Date() });
 
-        // Update Firestore
-        await updateDoc(doc(db, 'courses', currentEditingCourseId), {
-            modules: modules,
-            updatedAt: new Date()
-        });
+        const fresh = await getDoc(doc(db, 'courses', editingCourseId));
+        editingCourseData = { id: fresh.id, ...fresh.data() };
 
-        // Reload fresh data
-        const courseDoc = await getDoc(doc(db, 'courses', currentEditingCourseId));
-        if (!courseDoc.exists()) {
-            throw new Error('Course not found after update');
-        }
-        
-        currentEditingCourseData = { id: courseDoc.id, ...courseDoc.data() };
-
-        const module = currentEditingCourseData.modules.find(m => m.id === currentEditingModuleId);
-        if (!module) {
-            throw new Error('Module not found after refresh');
-        }
-        
-        displayLessonsList(module.lessons);
-        document.getElementById('lessonFormModal').classList.remove('active');
+        const freshMod = editingCourseData.modules.find(m => m.id === editingModuleId);
+        renderLessons(freshMod?.lessons || []);
+        closeModal('lessonFormModal');
         loadCourses();
-        
-        showSuccess(lessonId ? 'Lesson updated successfully!' : 'Lesson created successfully!');
-    } catch (error) {
-        console.error('Error saving lesson:', error);
-        showError('Failed to save lesson: ' + error.message);
+        toast(lessonId ? 'Lesson updated.' : 'Lesson added.', 'success');
+    } catch (err) {
+        console.error(err);
+        toast('Save failed: ' + err.message, 'error');
     } finally {
-        if (saveBtn) {
-            saveBtn.disabled = false;
-            saveBtn.textContent = 'Save Lesson';
-        }
+        if (btn) { btn.disabled = false; btn.textContent = 'Save Lesson'; }
     }
 }
 
-// Edit lesson
-function editLesson(lessonId) {
-    openLessonFormModal(lessonId);
-}
-
-// Delete lesson
 async function deleteLesson(lessonId) {
-    if (!confirm('Are you sure you want to delete this lesson?')) {
-        return;
-    }
+    if (!confirm('Delete this lesson?')) return;
 
     try {
-        const modules = [...currentEditingCourseData.modules];
-        const moduleIndex = modules.findIndex(m => m.id === currentEditingModuleId);
-        
-        if (moduleIndex === -1) {
-            showError('Module not found');
-            return;
-        }
+        const modules = [...editingCourseData.modules];
+        const modIdx = modules.findIndex(m => m.id === editingModuleId);
+        if (modIdx === -1) return;
 
-        const lessons = modules[moduleIndex].lessons || [];
-        const lessonIndex = lessons.findIndex(l => l.id === lessonId);
-        
-        if (lessonIndex !== -1) {
-            lessons.splice(lessonIndex, 1);
-            
-            // Reorder remaining lessons
-            lessons.forEach((lesson, index) => {
-                lesson.order = index + 1;
-            });
+        const lessons = modules[modIdx].lessons?.filter(l => l.id !== lessonId) || [];
+        lessons.forEach((l, i) => { l.order = i + 1; });
+        modules[modIdx].lessons = lessons;
 
-            modules[moduleIndex].lessons = lessons;
+        await updateDoc(doc(db, 'courses', editingCourseId), { modules, updatedAt: new Date() });
 
-            await updateDoc(doc(db, 'courses', currentEditingCourseId), {
-                modules: modules,
-                updatedAt: new Date()
-            });
+        const fresh = await getDoc(doc(db, 'courses', editingCourseId));
+        editingCourseData = { id: fresh.id, ...fresh.data() };
 
-            // Reload fresh data
-            const courseDoc = await getDoc(doc(db, 'courses', currentEditingCourseId));
-            currentEditingCourseData = { id: courseDoc.id, ...courseDoc.data() };
-
-            const module = currentEditingCourseData.modules.find(m => m.id === currentEditingModuleId);
-            displayLessonsList(module.lessons);
-            loadCourses();
-            showSuccess('Lesson deleted successfully!');
-        }
-    } catch (error) {
-        console.error('Error deleting lesson:', error);
-        showError('Error deleting lesson: ' + error.message);
+        const freshMod = editingCourseData.modules.find(m => m.id === editingModuleId);
+        renderLessons(freshMod?.lessons || []);
+        loadCourses();
+        toast('Lesson deleted.', 'success');
+    } catch (err) {
+        console.error(err);
+        toast('Delete failed: ' + err.message, 'error');
     }
 }
 
-// Export functions
+// ── Expose ──
 window.adminPanel = {
-    editCourse,
+    editCourse: id => openCourseModal(id),
     deleteCourse,
     manageModules,
-    editModule,
+    editModule: openModuleFormModal,
     deleteModule,
     manageLessons,
-    editLesson,
-    deleteLesson,
     openLessonFormModal,
+    editLesson: openLessonFormModal,
+    deleteLesson,
     backToModules
 };
 
-// Initialize
-document.addEventListener('DOMContentLoaded', initAdmin);
+document.addEventListener('DOMContentLoaded', init);
